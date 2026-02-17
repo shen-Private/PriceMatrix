@@ -1,70 +1,100 @@
-# Getting Started with Create React App
+# PriceMatrix 2.0
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+> 企業級折扣管理系統 | Enterprise Discount Management System
 
-## Available Scripts
+---
 
-In the project directory, you can run:
+## 📖 專案簡介 | About
 
-### `npm start`
+**繁體中文**
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+PriceMatrix 是一套為業務人員設計的折扣管理系統。  
+前身是 Excel 試算表，後來升級為 Google Apps Script，但因資料量龐大（1,000 客戶 × 1,600 商品）導致效能瓶頸，因此重新以企業級架構打造 2.0 版本。
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+**English**
 
-### `npm test`
+PriceMatrix is a discount management system designed for sales teams.  
+It evolved from Excel spreadsheets → Google Apps Script → a full-stack enterprise application, built to handle 1,000+ customers and 1,600+ products efficiently.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+---
 
-### `npm run build`
+## ✨ 功能 | Features
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- 🔍 客戶折扣查詢 | Customer discount lookup
+- ✏️ 單筆折扣編輯（Inline editing）| Inline discount editing
+- ➕ 新增折扣記錄 | Add new discount records
+- 🗑️ 刪除折扣記錄（含確認提示）| Delete with confirmation
+- 🔔 操作結果 Toast 通知 | Toast notifications
+- 📂 商品分類篩選 | Category filter
+- ⏳ 搜尋中 Loading 狀態 | Loading state during search
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+---
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## 🛠️ 技術棧 | Tech Stack
 
-### `npm run eject`
+| 層級 | 技術 |
+|------|------|
+| 前端 Frontend | React, JavaScript |
+| 元件文件 Component Docs | Storybook |
+| HTTP 請求 | Axios |
+| 後端 Backend | Java Spring Boot |
+| 資料庫 Database | MySQL |
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+---
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## 🏗️ 系統架構 | Architecture
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+```
+前端 React (port 3000)
+    ↓ HTTP Request
+後端 Spring Boot (port 8080)
+    ↓ JPA
+MySQL 資料庫 (port 3306)
+```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+前後端完全分離 | Full separation of frontend and backend
 
-## Learn More
+---
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## 🚀 本地啟動 | Local Setup
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### 前端 Frontend
 
-### Code Splitting
+```bash
+npm install
+npm start
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+### 後端 Backend
 
-### Analyzing the Bundle Size
+請參考 [PriceMatrix-backend](https://github.com/shen-Private/PriceMatrix-backend)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+---
 
-### Making a Progressive Web App
+## 📊 資料規模 | Data Scale
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+- 客戶數 Customers：1,000
+- 商品數 Products：600 ~ 1,600
+- 潛在折扣記錄 Potential discount records：最多 1,600,000 筆
 
-### Advanced Configuration
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+## 📁 專案結構 | Project Structure
 
-### Deployment
+```
+src/
+├── App.js
+├── DiscountPanel.js     # 折扣查詢與管理面板
+├── CustomerSearch.js    # 客戶搜尋元件
+└── stories/             # Storybook 元件文件
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+---
 
-### `npm run build` fails to minify
+## 🎯 開發背景 | Background
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+這個專案同時是：
+- 解決真實業務痛點的實用工具
+- 從 WordPress 開發者轉型為全端工程師的學習歷程
+
+This project serves as both a practical business tool and a learning journey transitioning from WordPress/CMS development to full-stack enterprise architecture.

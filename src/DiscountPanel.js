@@ -56,6 +56,7 @@ function DiscountPanel() {
 
             if (customers.length === 0) {
                 setDiscounts(null);
+
                 return;
             }
 
@@ -65,6 +66,7 @@ function DiscountPanel() {
             const categoryParam = selectedCategory ? `&categoryId=${selectedCategory}` : '';
             const discountRes = await axios.get(`${API_URL}/discounts/customer/${customerId}?${categoryParam}`);
             setDiscounts(discountRes.data);
+            console.log('折扣資料：', discountRes.data);
 
         } catch (error) {
             console.error('搜尋失敗：', error);

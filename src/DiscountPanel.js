@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 
 // DiscountPanel = 折扣查詢面板
 // 佈局：左右分割
@@ -34,7 +35,7 @@ function DiscountPanel() {
     };
     // === 啟動時：載入分類列表 ===
     useEffect(() => {
-        axios.get('http://localhost:8080/categories')
+        axios.get(API_URL + '/categories')
             .then(response => {
                 setCategories(response.data);
             })
@@ -49,7 +50,7 @@ function DiscountPanel() {
 
         setIsLoading(true); // 開始搜尋
         await new Promise(resolve => setTimeout(resolve, 500));
-        axios.get(`http://localhost:8080/customers/search?name=${searchText}`)
+        axios.get(`${API_URL}/customers/search?name=${searchText}`)
             .then(response => {
                 const customers = response.data;
                 if (customers.length === 0) {
@@ -59,7 +60,7 @@ function DiscountPanel() {
                 const customerId = customers[0].id;
                 setCurrentCustomerId(customers[0].id);
                 const categoryParam = selectedCategory ? `&categoryId=${selectedCategory}` : '';
-                return axios.get(`http://localhost:8080/discounts/customer/${customerId}?${categoryParam}`);
+                return axios.get(`${API_URL}/discounts/customer/${customerId}?${categoryParam}`);
             })
             .then(response => {
                 if (response) setDiscounts(response.data);
@@ -76,7 +77,7 @@ function DiscountPanel() {
         if (!window.confirm('確定要刪除這筆折扣嗎？')) return;
 
         try {
-            await axios.delete(`http://localhost:8080/discounts/${id}`);
+            await axios.delete(`${API_URL}/discounts/${id}`);
             setDiscounts(discounts.filter(d => d.id !== id));
             showToast('刪除成功');
         } catch (error) {
@@ -92,7 +93,7 @@ function DiscountPanel() {
                 product: { name: newDiscount.productName, category: { id: newDiscount.categoryId } },
                 discountRatio: parseFloat(newDiscount.discountRatio) / 100
             };
-            const response = await axios.post('http://localhost:8080/discounts', payload);
+            const response = await axios.post(API_URL + '/discounts', payload);
             setDiscounts([...discounts, response.data]);// 把新記錄加到畫面上
             // 關閉表單，清空輸入
             setShowAddForm(false);
@@ -111,7 +112,7 @@ function DiscountPanel() {
         setEditingId(null); // ← 加這行，立刻切回顯示模式
         // 模擬延遲（測試用）
         await new Promise(resolve => setTimeout(resolve, 500));
-        axios.put(`http://localhost:8080/discounts/${discountId}`, {
+        axios.put(`${API_URL}/discounts/${discountId}`, {
             discountRatio: newRatio
         })
             .then(() => {

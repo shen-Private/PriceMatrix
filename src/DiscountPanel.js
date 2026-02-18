@@ -44,33 +44,33 @@ function DiscountPanel() {
             });
     }, []);
 
-    // === 搜尋按鈕邏輯：先找客戶，再拿折扣 ===
     const handleSearch = async () => {
         if (!searchText.trim()) return;
 
-        setIsLoading(true); // 開始搜尋
+        setIsLoading(true);
         await new Promise(resolve => setTimeout(resolve, 500));
-        axios.get(`${API_URL}/customers/search?name=${searchText}`)
-            .then(response => {
-                const customers = response.data;
-                if (customers.length === 0) {
-                    setDiscounts(null);
-                    return;
-                }
-                const customerId = customers[0].id;
-                setCurrentCustomerId(customers[0].id);
-                const categoryParam = selectedCategory ? `&categoryId=${selectedCategory}` : '';
-                return axios.get(`${API_URL}/discounts/customer/${customerId}?${categoryParam}`);
-            })
-            .then(response => {
-                if (response) setDiscounts(response.data);
-            })
-            .catch(error => {
-                console.error('搜尋失敗：', error);
-            })
-            .finally(() => {
-                setIsLoading(false); // 無論成功失敗都結束 loading
-            });
+
+        try {
+            const customerRes = await axios.get(`${API_URL}/customers/search?name=${searchText}`);
+            const customers = customerRes.data;
+
+            if (customers.length === 0) {
+                setDiscounts(null);
+                return;
+            }
+
+            const customerId = customers[0].id;
+            setCurrentCustomerId(customerId);
+
+            const categoryParam = selectedCategory ? `&categoryId=${selectedCategory}` : '';
+            const discountRes = await axios.get(`${API_URL}/discounts/customer/${customerId}?${categoryParam}`);
+            setDiscounts(discountRes.data);
+
+        } catch (error) {
+            console.error('搜尋失敗：', error);
+        } finally {
+            setIsLoading(false);
+        }
     };
     // 刪除折扣記錄
     const handleDelete = async (id) => {

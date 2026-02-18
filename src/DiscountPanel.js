@@ -43,37 +43,33 @@ function DiscountPanel() {
                 console.error('分類載入失敗：', error);
             });
     }, []);
-
     const handleSearch = async () => {
-        if (!searchText.trim()) return;
+    if (!searchText.trim()) return;
 
-        setIsLoading(true);
-        await new Promise(resolve => setTimeout(resolve, 500));
+    setIsLoading(true);
 
-        try {
-            const customerRes = await axios.get(`${API_URL}/customers/search?name=${searchText}`);
-            const customers = customerRes.data;
+    try {
+        const customerRes = await axios.get(`${API_URL}/customers/search?name=${searchText}`);
+        const customers = customerRes.data;
 
-            if (customers.length === 0) {
-                setDiscounts(null);
-
-                return;
-            }
-
-            const customerId = customers[0].id;
-            setCurrentCustomerId(customerId);
-
-            const categoryParam = selectedCategory ? `&categoryId=${selectedCategory}` : '';
-            const discountRes = await axios.get(`${API_URL}/discounts/customer/${customerId}?${categoryParam}`);
-            setDiscounts(discountRes.data);
-            console.log('折扣資料：', discountRes.data);
-
-        } catch (error) {
-            console.error('搜尋失敗：', error);
-        } finally {
-            setIsLoading(false);
+        if (customers.length === 0) {
+            setDiscounts(null);
+            return;
         }
-    };
+
+        const customerId = customers[0].id;
+        setCurrentCustomerId(customerId);
+
+        const categoryParam = selectedCategory ? `&categoryId=${selectedCategory}` : '';
+        const discountRes = await axios.get(`${API_URL}/discounts/customer/${customerId}?${categoryParam}`);
+        setDiscounts(discountRes.data);
+
+    } catch (error) {
+        console.error('搜尋失敗：', error);
+    } finally {
+        setIsLoading(false);
+    }
+};
     // 刪除折扣記錄
     const handleDelete = async (id) => {
         if (!window.confirm('確定要刪除這筆折扣嗎？')) return;

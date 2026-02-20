@@ -35,7 +35,7 @@ function DiscountPanel() {
     };
     // === 啟動時：載入分類列表 ===
     useEffect(() => {
-        axios.get(API_URL + '/categories')
+        axios.get(API_URL + '/api/categories')
             .then(response => {
                 setCategories(response.data);
             })
@@ -44,32 +44,32 @@ function DiscountPanel() {
             });
     }, []);
     const handleSearch = async () => {
-    if (!searchText.trim()) return;
+        if (!searchText.trim()) return;
 
-    setIsLoading(true);
+        setIsLoading(true);
 
-    try {
-        const customerRes = await axios.get(`${API_URL}/customers/search?name=${searchText}`);
-        const customers = customerRes.data;
+        try {
+            const customerRes = await axios.get(`${API_URL}/customers/search?name=${searchText}`);
+            const customers = customerRes.data;
 
-        if (customers.length === 0) {
-            setDiscounts(null);
-            return;
+            if (customers.length === 0) {
+                setDiscounts(null);
+                return;
+            }
+
+            const customerId = customers[0].id;
+            setCurrentCustomerId(customerId);
+
+            const categoryParam = selectedCategory ? `&categoryId=${selectedCategory}` : '';
+            const discountRes = await axios.get(`${API_URL}/discounts/customer/${customerId}?${categoryParam}`);
+            setDiscounts(discountRes.data);
+
+        } catch (error) {
+            console.error('搜尋失敗：', error);
+        } finally {
+            setIsLoading(false);
         }
-
-        const customerId = customers[0].id;
-        setCurrentCustomerId(customerId);
-
-        const categoryParam = selectedCategory ? `&categoryId=${selectedCategory}` : '';
-        const discountRes = await axios.get(`${API_URL}/discounts/customer/${customerId}?${categoryParam}`);
-        setDiscounts(discountRes.data);
-
-    } catch (error) {
-        console.error('搜尋失敗：', error);
-    } finally {
-        setIsLoading(false);
-    }
-};
+    };
     // 刪除折扣記錄
     const handleDelete = async (id) => {
         if (!window.confirm('確定要刪除這筆折扣嗎？')) return;
@@ -91,7 +91,7 @@ function DiscountPanel() {
                 product: { name: newDiscount.productName, category: { id: newDiscount.categoryId } },
                 discountRatio: parseFloat(newDiscount.discountRatio) / 100
             };
-            const response = await axios.post(API_URL + '/discounts', payload);
+            const response = await axios.post(API_URL + '/api/categories', payload);
             setDiscounts([...discounts, response.data]);// 把新記錄加到畫面上
             // 關閉表單，清空輸入
             setShowAddForm(false);

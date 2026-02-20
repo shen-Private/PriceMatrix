@@ -49,7 +49,7 @@ function DiscountPanel() {
         setIsLoading(true);
 
         try {
-            const customerRes = await axios.get(`${API_URL}/customers/search?name=${searchText}`);
+            const customerRes = await axios.get(`${API_URL}/api/customers/search?name=${searchText}`);
             const customers = customerRes.data;
 
             if (customers.length === 0) {
@@ -61,7 +61,7 @@ function DiscountPanel() {
             setCurrentCustomerId(customerId);
 
             const categoryParam = selectedCategory ? `&categoryId=${selectedCategory}` : '';
-            const discountRes = await axios.get(`${API_URL}/discounts/customer/${customerId}?${categoryParam}`);
+            const discountRes = await axios.get(`${API_URL}/api/discounts/customer/${customerId}?${categoryParam}`);
             setDiscounts(discountRes.data);
 
         } catch (error) {
@@ -75,7 +75,7 @@ function DiscountPanel() {
         if (!window.confirm('確定要刪除這筆折扣嗎？')) return;
 
         try {
-            await axios.delete(`${API_URL}/discounts/${id}`);
+            await axios.delete(`${API_URL}/api/discounts/${id}`);
             setDiscounts(discounts.filter(d => d.id !== id));
             showToast('刪除成功');
         } catch (error) {
@@ -110,7 +110,7 @@ function DiscountPanel() {
         setEditingId(null); // ← 加這行，立刻切回顯示模式
         // 模擬延遲（測試用）
         await new Promise(resolve => setTimeout(resolve, 500));
-        axios.put(`${API_URL}/discounts/${discountId}`, {
+        axios.put(`${API_URL}/api/discounts/${discountId}`, {
             discountRatio: newRatio
         })
             .then(() => {

@@ -25,13 +25,11 @@ function ScanPanel() {
     const [message, setMessage] = useState('');
     const [carrier, setCarrier] = useState('');
 
-    // 相機掃碼相關
     const [scanning, setScanning] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
     const readerRef = useRef<BrowserMultiFormatReader | null>(null);
-    const hasScannedRef = useRef(false); // 鎖：掃到一次後不再觸發
+    const hasScannedRef = useRef(false);
 
-    // 關閉相機
     const stopScan = () => {
         if (videoRef.current && videoRef.current.srcObject) {
             const stream = videoRef.current.srcObject as MediaStream;
@@ -42,28 +40,26 @@ function ScanPanel() {
         setScanning(false);
     };
 
-    // 開啟相機掃碼
     const startScan = async () => {
-        hasScannedRef.current = false; // 重置鎖
+        hasScannedRef.current = false;
         setScanning(true);
         setMessage('');
+        // 掃碼前先清空輸入欄，避免殘留資料干擾
+        setBarcode('');
+        setFoundItem(null);
 
         setTimeout(async () => {
             if (!videoRef.current) return;
-
             const reader = new BrowserMultiFormatReader();
             readerRef.current = reader;
-
             try {
                 await reader.decodeFromVideoDevice(
                     undefined,
                     videoRef.current,
-                    (result, err) => {
-                        // 已經掃過一次就不再處理
+                    (result) => {
                         if (hasScannedRef.current) return;
-
                         if (result) {
-                            hasScannedRef.current = true; // 上鎖
+                            hasScannedRef.current = true;
                             const scannedBarcode = result.getText();
                             setBarcode(scannedBarcode);
                             stopScan();
@@ -78,14 +74,10 @@ function ScanPanel() {
         }, 100);
     };
 
-    // 離開頁面時清理
     useEffect(() => {
-        return () => {
-            stopScan();
-        };
+        return () => { stopScan(); };
     }, []);
 
-    // 抽出查詢邏輯（手動輸入 + 相機掃碼共用）
     const searchByBarcode = async (code: string) => {
         if (!code.trim()) return;
         try {
@@ -104,6 +96,7 @@ function ScanPanel() {
         <div style={{ padding: '32px', maxWidth: '480px', margin: '0 auto' }}>
             <h2 style={{ marginBottom: '24px' }}>掃碼入出庫</h2>
 
+            {/* 條碼輸入區 */}
             <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#5a6480' }}>
                     條碼
@@ -115,7 +108,7 @@ function ScanPanel() {
                         onChange={e => setBarcode(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleSearch()}
                         placeholder="輸入或掃描條碼"
-                        autoFocus
+                        // autoFocus 拿掉：手機鍵盤會跳出來干擾相機
                     />
                     <button
                         onClick={handleSearch}
@@ -126,6 +119,7 @@ function ScanPanel() {
                 </div>
             </div>
 
+            {/* 相機掃碼按鈕 / 相機畫面 */}
             {!scanning ? (
                 <button
                     onClick={startScan}
@@ -140,10 +134,25 @@ function ScanPanel() {
                 </button>
             ) : (
                 <div style={{ marginBottom: '16px' }}>
-                    <video
-                        ref={videoRef}
-                        style={{ width: '100%', borderRadius: '8px', backgroundColor: '#000' }}
-                    />
+                    {/* 相機 viewfinder：video + 紅線疊層 */}
+                    <div style={{ position: 'relative', width: '100%', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#000' }}>
+                        <video
+                            ref={videoRef}
+                            style={{ width: '100%', display: 'block' }}
+                        />
+                        {/* 紅線：位置在畫面垂直中央 */}
+                        <div style={{
+                            position: 'absolute',
+                            top: '50%',
+                            left: '10%',
+                            right: '10%',
+                            height: '2px',
+                            backgroundColor: '#e74c3c',
+                            boxShadow: '0 0 6px rgba(231, 76, 60, 0.8)',
+                            transform: 'translateY(-50%)',
+                            pointerEvents: 'none'
+                        }} />
+                    </div>
                     <button
                         onClick={stopScan}
                         style={{

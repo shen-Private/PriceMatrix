@@ -41,12 +41,17 @@ function ScanPanel() {
     };
 
     const startScan = async () => {
+        // 先強制清除上一次的 reader，避免舊 callback 殘留
+        if (videoRef.current && videoRef.current.srcObject) {
+            const stream = videoRef.current.srcObject as MediaStream;
+            stream.getTracks().forEach(track => track.stop());
+            videoRef.current.srcObject = null;
+        }
+        readerRef.current = null;
+
         hasScannedRef.current = false;
         setScanning(true);
         setMessage('');
-        // 掃碼前先清空輸入欄，避免殘留資料干擾
-        setBarcode('');
-        setFoundItem(null);
 
         setTimeout(async () => {
             if (!videoRef.current) return;

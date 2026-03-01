@@ -28,9 +28,15 @@ function ScanPanel() {
     const [scanning, setScanning] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
     const readerRef = useRef<BrowserMultiFormatReader | null>(null);
-    const hasScannedRef = useRef(false);
+    const hasScannedRef = useRef(false); // 鎖：掃到一次後不再觸發
+    const controlsRef = useRef<any>(null); // ZXing controls，用來停止 decode loop // 鎖：掃到一次後不再觸發
+    const controlsRef = useRef<any>(null); // ZXing controls，用來停止 decode loop
 
     const stopScan = () => {
+        if (controlsRef.current) {
+            controlsRef.current.stop();
+            controlsRef.current = null;
+        }
         if (videoRef.current && videoRef.current.srcObject) {
             const stream = videoRef.current.srcObject as MediaStream;
             stream.getTracks().forEach(track => track.stop());
@@ -58,7 +64,7 @@ function ScanPanel() {
             const reader = new BrowserMultiFormatReader();
             readerRef.current = reader;
             try {
-                await reader.decodeFromVideoDevice(
+                const controls = await reader.decodeFromVideoDevice(
                     undefined,
                     videoRef.current,
                     (result) => {
@@ -72,6 +78,7 @@ function ScanPanel() {
                         }
                     }
                 );
+                controlsRef.current = controls; // 儲存 controls 供 stopScan 使用
             } catch (e) {
                 setMessage('無法開啟相機，請確認瀏覽器權限');
                 setScanning(false);

@@ -108,8 +108,15 @@ function ScanPanel() {
                         onChange={e => setBarcode(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleSearch()}
                         placeholder="輸入或掃描條碼"
-                        // autoFocus 拿掉：手機鍵盤會跳出來干擾相機
                     />
+                    {barcode && (
+                        <button
+                            onClick={() => { setBarcode(''); setFoundItem(null); setMessage(''); }}
+                            style={{ padding: '10px 12px', backgroundColor: '#fff', color: '#999', border: '1px solid #d0d7e8', borderRadius: '7px', cursor: 'pointer', fontSize: '16px' }}
+                        >
+                            ✕
+                        </button>
+                    )}
                     <button
                         onClick={handleSearch}
                         style={{ padding: '10px 16px', backgroundColor: '#4a78c4', color: '#fff', border: 'none', borderRadius: '7px', cursor: 'pointer' }}

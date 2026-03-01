@@ -30,8 +30,6 @@ function ScanPanel() {
     const readerRef = useRef<BrowserMultiFormatReader | null>(null);
     const hasScannedRef = useRef(false); // 鎖：掃到一次後不再觸發
     const controlsRef = useRef<any>(null); // ZXing controls，用來停止 decode loop // 鎖：掃到一次後不再觸發
-    const controlsRef = useRef<any>(null); // ZXing controls，用來停止 decode loop
-
     const stopScan = () => {
         if (controlsRef.current) {
             controlsRef.current.stop();

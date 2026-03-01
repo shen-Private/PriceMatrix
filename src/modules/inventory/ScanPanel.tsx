@@ -1,4 +1,3 @@
-/* eslint-disable */
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { BrowserMultiFormatReader } from '@zxing/browser';
@@ -30,13 +29,25 @@ function ScanPanel() {
     const [scanning, setScanning] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
     const readerRef = useRef<BrowserMultiFormatReader | null>(null);
+    const hasScannedRef = useRef(false); // 鎖：掃到一次後不再觸發
+
+    // 關閉相機
+    const stopScan = () => {
+        if (videoRef.current && videoRef.current.srcObject) {
+            const stream = videoRef.current.srcObject as MediaStream;
+            stream.getTracks().forEach(track => track.stop());
+            videoRef.current.srcObject = null;
+        }
+        readerRef.current = null;
+        setScanning(false);
+    };
 
     // 開啟相機掃碼
     const startScan = async () => {
+        hasScannedRef.current = false; // 重置鎖
         setScanning(true);
         setMessage('');
 
-        // 等 video DOM 出現後才能掛載
         setTimeout(async () => {
             if (!videoRef.current) return;
 
@@ -45,17 +56,19 @@ function ScanPanel() {
 
             try {
                 await reader.decodeFromVideoDevice(
-                    undefined, // undefined = 讓 ZXing 自動選後鏡頭
+                    undefined,
                     videoRef.current,
                     (result, err) => {
+                        // 已經掃過一次就不再處理
+                        if (hasScannedRef.current) return;
+
                         if (result) {
-                            // 掃到條碼：填入 input，停止相機，送出查詢
+                            hasScannedRef.current = true; // 上鎖
                             const scannedBarcode = result.getText();
                             setBarcode(scannedBarcode);
                             stopScan();
                             searchByBarcode(scannedBarcode);
                         }
-                        // err 是 ZXing 每幀找不到條碼時的正常輸出，忽略即可
                     }
                 );
             } catch (e) {
@@ -63,18 +76,6 @@ function ScanPanel() {
                 setScanning(false);
             }
         }, 100);
-    };
-
-    // 關閉相機
-    const stopScan = () => {
-        // 直接停止 video 的 MediaStream
-        if (videoRef.current && videoRef.current.srcObject) {
-            const stream = videoRef.current.srcObject as MediaStream;
-            stream.getTracks().forEach(track => track.stop());
-            videoRef.current.srcObject = null;
-        }
-        readerRef.current = null;
-        setScanning(false);
     };
 
     // 離開頁面時清理
@@ -103,7 +104,6 @@ function ScanPanel() {
         <div style={{ padding: '32px', maxWidth: '480px', margin: '0 auto' }}>
             <h2 style={{ marginBottom: '24px' }}>掃碼入出庫</h2>
 
-            {/* 條碼輸入區 */}
             <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#5a6480' }}>
                     條碼
@@ -126,7 +126,6 @@ function ScanPanel() {
                 </div>
             </div>
 
-            {/* 相機掃碼按鈕 */}
             {!scanning ? (
                 <button
                     onClick={startScan}
@@ -141,7 +140,6 @@ function ScanPanel() {
                 </button>
             ) : (
                 <div style={{ marginBottom: '16px' }}>
-                    {/* 相機畫面 */}
                     <video
                         ref={videoRef}
                         style={{ width: '100%', borderRadius: '8px', backgroundColor: '#000' }}
@@ -160,7 +158,6 @@ function ScanPanel() {
                 </div>
             )}
 
-            {/* 找到商品 */}
             {foundItem && (
                 <div style={{ backgroundColor: '#f0f4ff', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
                     <div style={{ fontWeight: 600, marginBottom: '4px' }}>{foundItem.product.name}</div>
@@ -168,7 +165,6 @@ function ScanPanel() {
                 </div>
             )}
 
-            {/* 訊息（成功 / 錯誤） */}
             {message && (
                 <div style={{
                     color: message.includes('成功') ? '#27ae60' : '#e74c3c',
@@ -178,7 +174,6 @@ function ScanPanel() {
                 </div>
             )}
 
-            {/* 入出庫操作 */}
             {foundItem && (
                 <>
                     <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>

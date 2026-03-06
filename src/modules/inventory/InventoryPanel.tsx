@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import styles from './InventoryPanel.module.css';
 import React from 'react';
+import { useAuth } from '../../AuthContext';
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 
 // ===== 型別定義 =====
@@ -74,7 +75,12 @@ function InventoryPanel() {
   const [items, setItems] = useState<ItemWithStock[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [filterType, setFilterType] = useState<StockType | ''>('');
+  const { can } = useAuth();
+  const canSetSafetyStock = can('set_safety_stock');
 
+  const [editingSafetyId, setEditingSafetyId] = useState<number | null>(null);
+  const [editingSafetyValue, setEditingSafetyValue] = useState('');
+  const [savingSafetyId, setSavingSafetyId] = useState<number | null>(null);
   // 廠商情報新增
   const [showInquiryForm, setShowInquiryForm] = useState<number | null>(null); // item.id
   const [newInquiry, setNewInquiry] = useState({ confirmedBy: '', quantity: '', note: '' });
@@ -141,7 +147,27 @@ function InventoryPanel() {
       showToast('歷史載入失敗', 'error');
     }
   };
+  const startEditSafety = (item: InventoryItem) => {
+    setEditingSafetyId(item.id);
+    setEditingSafetyValue(item.safetyStock !== null ? item.safetyStock.toString() : '');
+  };
 
+  const handleSaveSafety = async (item: InventoryItem) => {
+    const val = editingSafetyValue === '' ? null : parseInt(editingSafetyValue, 10);
+    if (val !== null && (isNaN(val) || val < 0)) { showToast('請輸入 0 以上的整數', 'error'); return; }
+    setSavingSafetyId(item.id);
+    setEditingSafetyId(null);
+    try {
+      await axios.put(`${API_URL}/api/inventory/items/${item.id}`, {
+        stockType: item.stockType, unit: item.unit, safetyStock: val,
+      });
+      setItems(prev => prev.map(row =>
+        row.item.id === item.id ? { ...row, item: { ...row.item, safetyStock: val } } : row
+      ));
+      showToast(val !== null ? `安全庫存設為 ${val} ${item.unit}` : '安全庫存已清除');
+    } catch (err) { showToast('儲存失敗', 'error'); }
+    finally { setSavingSafetyId(null); }
+  };
   // ===== 過濾 =====
   const filteredItems = filterType
     ? items.filter(i => i.item.stockType === filterType)
@@ -180,7 +206,7 @@ function InventoryPanel() {
   };
 
   const fmt = (d: string) => new Date(d).toLocaleDateString('ja-JP');
-
+  const colSpan = canSetSafetyStock ? 6 : 5;
   return (
     <div className={styles.root}>
 
@@ -285,7 +311,7 @@ function InventoryPanel() {
           </div>
         </aside>
 
-        <main className={styles.main}>
+        <main className={styles.main}>庫存狀況
           <div>
             <div className={styles.mainTitle}>庫存總覽</div>
             <div className={styles.mainSubtitle}>
@@ -301,13 +327,14 @@ function InventoryPanel() {
                   <th className={styles.th}>分類</th>
                   <th className={styles.th}>形態</th>
                   <th className={styles.th}>庫存狀況</th>
+                  {canSetSafetyStock && <th className={styles.th}>安全庫存</th>}
                   <th className={styles.th}>操作</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredItems.length === 0 && (
                   <tr>
-                    <td colSpan={5} className={styles.td} style={{ textAlign: 'center', color: '#96a0b8', padding: '32px' }}>
+                    <td colSpan={colSpan} className={styles.td} style={{ textAlign: 'center', color: '#96a0b8', padding: '32px' }}>
                       {isLoading ? '載入中…' : '無資料'}
                     </td>
                   </tr>
@@ -319,9 +346,11 @@ function InventoryPanel() {
                   const tdClass = isLast ? styles.tdLast : styles.td;
                   const isDropship = item.stockType === 'outsource_dropship';
                   const isExpanded = expandedInquiry === item.id;
-
+                  const isEditingSafety = editingSafetyId === item.id;
+                  const isSavingSafety = savingSafetyId === item.id;
                   return (
                     <React.Fragment key={item.id}>
+
                       <tr key={item.id} style={{ backgroundColor: isExpanded ? '#f8f9fd' : 'transparent' }}>
                         <td className={tdClass}>
                           <div style={{ fontWeight: 500 }}>{item.product.name}</div>
@@ -330,6 +359,7 @@ function InventoryPanel() {
                           <span className={styles.badge}>{item.product.category.name}</span>
                         </td>
                         <td className={tdClass}>
+
                           <span style={{
                             display: 'inline-flex', alignItems: 'center', gap: '5px',
                             fontSize: '12px', color: STOCK_TYPE_COLOR[item.stockType]
@@ -344,6 +374,35 @@ function InventoryPanel() {
                         <td className={tdClass}>
                           {renderStockStatus(row)}
                         </td>
+                        {canSetSafetyStock && (
+                          <td className={tdClass}>
+                            {(item.stockType === 'internal' || item.stockType === 'outsource_warehouse') ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                {isEditingSafety ? (
+                                  <>
+                                    <input type="number" min="0" value={editingSafetyValue}
+                                      onChange={e => setEditingSafetyValue(e.target.value)}
+                                      onKeyDown={e => { if (e.key === 'Enter') handleSaveSafety(item); if (e.key === 'Escape') setEditingSafetyId(null); }}
+                                      autoFocus
+                                      style={{ width: '60px', padding: '4px 6px', border: '1px solid #4a78c4', borderRadius: '6px', fontSize: '13px', textAlign: 'center' }}
+                                    />
+                                    <span style={{ fontSize: '12px', color: '#96a0b8' }}>{item.unit}</span>
+                                    <button className={styles.btnConfirm} onClick={() => handleSaveSafety(item)}>確認</button>
+                                    <button className={styles.btnIcon} style={{ color: '#c0392b', borderColor: '#e8b4b0' }} onClick={() => setEditingSafetyId(null)}>✕</button>
+                                  </>
+                                ) : (
+                                  <span onClick={() => startEditSafety(item)} title="點擊設定安全庫存下限"
+                                    style={{ cursor: 'pointer', fontSize: '13px', color: item.safetyStock !== null ? '#2c3554' : '#96a0b8', fontWeight: item.safetyStock !== null ? 500 : 400 }}>
+                                    {isSavingSafety ? '…' : item.safetyStock !== null ? `${item.safetyStock} ${item.unit}` : '— 點擊設定'}
+                                    {!isSavingSafety && <span style={{ fontSize: '11px', marginLeft: '4px', opacity: 0.4 }}>✎</span>}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span style={{ color: '#c2cade', fontSize: '12px' }}>—</span>
+                            )}
+                          </td>
+                        )}
                         <td className={tdClass}>
                           {isDropship && (
                             <div style={{ display: 'flex', gap: '6px' }}>
@@ -366,7 +425,7 @@ function InventoryPanel() {
                       {/* 新增廠商情報表單 */}
                       {isDropship && showInquiryForm === item.id && (
                         <tr key={`form-${item.id}`}>
-                          <td colSpan={5} style={{ padding: '12px 16px', backgroundColor: '#f0f4ff', borderBottom: '1px solid #e8ecf4' }}>
+                          <td colSpan={colSpan} style={{ padding: '12px 16px', backgroundColor: '#f0f4ff', borderBottom: '1px solid #e8ecf4' }}>
                             <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                 <label className={styles.formLabel}>確認者</label>
@@ -410,7 +469,7 @@ function InventoryPanel() {
                       {/* 廠商情報歷史 */}
                       {isDropship && isExpanded && (
                         <tr key={`history-${item.id}`}>
-                          <td colSpan={5} style={{ padding: '8px 24px 16px', backgroundColor: '#f8f9fd', borderBottom: '1px solid #e8ecf4' }}>
+                          <td colSpan={colSpan} style={{ padding: '8px 24px 16px', backgroundColor: '#f8f9fd', borderBottom: '1px solid #e8ecf4' }}>
                             <div style={{ fontSize: '12px', color: '#5a6480', marginBottom: '8px' }}>廠商情報歷史</div>
                             {(inquiryHistory[item.id] || []).length === 0 ? (
                               <div style={{ color: '#96a0b8', fontSize: '13px' }}>尚無記錄</div>

@@ -8,7 +8,7 @@ interface User {
   isActive: boolean;
 }
 
-const API = "http://localhost:8080/api/admin/users";
+const API = `${process.env.REACT_APP_API_URL}/api/admin/users`;
 
 const roleOptions = ["admin", "warehouse", "sales", "cs"];
 

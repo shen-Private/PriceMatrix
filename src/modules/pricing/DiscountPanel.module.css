@@ -44,6 +44,12 @@
   font-family: monospace;
 }
 
+/* 新增：header 右側系統標籤 */
+.headerSystemLabel {
+  font-size: 13px;
+  color: #5a6480;
+}
+
 .layout {
   display: flex;
   flex: 1;
@@ -71,6 +77,13 @@
   text-transform: uppercase;
   color: #96a0b8;
   margin-bottom: 10px;
+}
+
+/* 新增：sidebar 底部切換客戶區塊 */
+.sidebarSwitchSection {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid #e8ecf4;
 }
 
 .formGroup {
@@ -258,6 +271,19 @@
   color: #5a6480;
 }
 
+/* 新增：candidateMini 右側 id と矢印 */
+.candidateMiniId {
+  font-size: 11px;
+  color: #96a0b8;
+  margin-left: auto;
+}
+
+.candidateMiniArrow {
+  font-size: 12px;
+  color: #4a78c4;
+  margin-left: 4px;
+}
+
 /* ── Stats ── */
 .statItem {
   display: flex;
@@ -302,6 +328,46 @@
   font-size: 12px;
   color: #96a0b8;
   margin-top: 2px;
+}
+
+/* ── Batch Toolbar（批次修改工具列）── */
+.batchToolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  background-color: #eef2fb;
+  border-radius: 8px;
+  border: 1px solid #c5d3f0;
+  flex-wrap: wrap;
+}
+
+.batchToolbarCount {
+  font-size: 13px;
+  color: #4a78c4;
+  font-weight: 600;
+}
+
+.batchToolbarMuted {
+  font-size: 13px;
+  color: #5a6480;
+}
+
+.batchInput {
+  width: 72px;
+  padding: 4px 8px;
+  border: 1px solid #c5d3f0;
+  border-radius: 6px;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ── Table + Audit 並排容器 ── */
+.tableAndAudit {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
 }
 
 /* ── Table ── */
@@ -476,6 +542,44 @@
   color: #4a78c4;
 }
 
+/* 新增：＋ボタンのアイコン枠 */
+.addFormPlusIcon {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1px dashed #c2cade;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+/* 新增：新增折扣表單 layout */
+.addFormRow {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  padding: 4px 0;
+}
+
+.addFormField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.addFormActions {
+  display: flex;
+  gap: 8px;
+}
+
+/* 新增：原價欄位無資料時 */
+.noPriceCell {
+  color: #96a0b8;
+  font-size: 12px;
+}
+
 .badge {
   display: inline-block;
   padding: 2px 8px;
@@ -485,6 +589,125 @@
   background-color: #e8ecf4;
   color: #5a6480;
   border: 1px solid #d0d7e8;
+}
+
+/* ── Audit Log 側欄 ── */
+.auditPanel {
+  width: 260px;
+  flex-shrink: 0;
+  background-color: #f8faff;
+  border: 1px solid #dde3f0;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.auditPanelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.auditPanelTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2c3554;
+}
+
+.auditPanelProductName {
+  font-size: 11px;
+  color: #7a88a8;
+  margin-top: 2px;
+}
+
+.auditPanelCloseBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  color: #96a0b8;
+  padding: 2px 6px;
+}
+
+.auditPanelMessage {
+  text-align: center;
+  color: #96a0b8;
+  font-size: 13px;
+  padding: 20px 0;
+}
+
+.auditLogList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.auditLogItem {
+  background-color: #fff;
+  border: 1px solid #e8ecf4;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.auditLogTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+/* badge の基本スタイル */
+.auditLogActionBadge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+/* action 種別ごとの色（動的なので inline で上書きするため基底だけ定義） */
+.auditLogActionCreate {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.auditLogActionUpdate {
+  background-color: #e8eefb;
+  color: #4a78c4;
+}
+
+.auditLogActionDelete {
+  background-color: #fdecea;
+  color: #c0392b;
+}
+
+.auditLogDate {
+  font-size: 11px;
+  color: #96a0b8;
+}
+
+.auditLogRatio {
+  font-size: 13px;
+  color: #3a4466;
+}
+
+.auditLogOldRatio {
+  color: #96a0b8;
+}
+
+.auditLogArrow {
+  margin: 0 6px;
+  color: #c2cade;
+}
+
+.auditLogNewRatio {
+  font-weight: 600;
+  color: #2c3554;
+}
+
+.auditLogOperator {
+  font-size: 11px;
+  color: #96a0b8;
+  margin-top: 4px;
 }
 
 /* ── Toast ── */

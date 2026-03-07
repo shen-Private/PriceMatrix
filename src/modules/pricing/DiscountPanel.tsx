@@ -97,8 +97,8 @@ function DiscountPanel() {
     setCurrentCustomer(null);
     setCustomerCandidates([]);
     setDiscounts([]);
-    setSelectedIds(new Set()); // 清除批次選取
-    setAuditPanelDiscountId(null); // 關閉 audit panel
+    setSelectedIds(new Set());
+    setAuditPanelDiscountId(null);
 
     try {
       const customerRes = await axios.get(`${API_URL}/api/customers/search?name=${searchText}`);
@@ -170,7 +170,6 @@ function DiscountPanel() {
         d.id === discountId ? { ...d, discountRatio: newRatio } : d
       ));
       showToast(`折扣已更新為 ${val}%`);
-      // 如果 audit panel 正在看這筆，重新載入
       if (auditPanelDiscountId === discountId) {
         loadAuditLogs(discountId);
       }
@@ -225,7 +224,6 @@ function DiscountPanel() {
 
   // ── 批次修改 handlers ─────────────────────────────
 
-  // 單筆勾選切換
   const toggleSelect = (id: number) => {
     setSelectedIds(prev => {
       const s = new Set(prev);
@@ -234,17 +232,15 @@ function DiscountPanel() {
     });
   };
 
-  // 全選 / 全不選
   const toggleSelectAll = () => {
     const validDiscounts = Array.isArray(discounts) ? discounts : [];
     if (selectedIds.size === validDiscounts.length) {
-      setSelectedIds(new Set()); // 全不選
+      setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(validDiscounts.map(d => d.id))); // 全選
+      setSelectedIds(new Set(validDiscounts.map(d => d.id)));
     }
   };
 
-  // 送出批次修改
   const handleBatchSave = async () => {
     const val = parseInt(batchValue, 10);
     if (isNaN(val) || val < 1 || val > 100) {
@@ -253,14 +249,12 @@ function DiscountPanel() {
     }
     const newRatio = val / 100;
 
-    // 建立 { discountId: newRatio } 的 map，後端格式
     const updates: Record<number, number> = {};
     selectedIds.forEach(id => { updates[id] = newRatio; });
 
     setIsBatchSaving(true);
     try {
       await axios.put(`${API_URL}/api/discounts/batch`, updates);
-      // 更新前端畫面
       setDiscounts(prev => (prev ?? []).map(d =>
         selectedIds.has(d.id) ? { ...d, discountRatio: newRatio } : d
       ));
@@ -290,7 +284,6 @@ function DiscountPanel() {
 
   const openAuditPanel = (discountId: number) => {
     if (auditPanelDiscountId === discountId) {
-      // 點同一筆 → 關閉
       setAuditPanelDiscountId(null);
       return;
     }
@@ -306,7 +299,13 @@ function DiscountPanel() {
     DELETE: '刪除',
   };
 
-  // 格式化時間顯示
+  // audit badge の class を action で決定
+  const getAuditBadgeClass = (action: string) => {
+    if (action === 'CREATE') return styles.auditLogActionCreate;
+    if (action.includes('UPDATE')) return styles.auditLogActionUpdate;
+    return styles.auditLogActionDelete;
+  };
+
   const formatDateTime = (dt: string) => {
     const d = new Date(dt);
     return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -322,8 +321,6 @@ function DiscountPanel() {
   const fmt = (n: number) => Number(n).toLocaleString();
 
   const isCustomerSelected = currentCustomer !== null;
-
-  // 找出 audit panel 對應的折扣名稱
   const auditDiscount = validDiscounts.find(d => d.id === auditPanelDiscountId);
 
   return (
@@ -334,7 +331,7 @@ function DiscountPanel() {
           <div className={styles.headerLogoMark}>PM</div>
           PriceMatrix
         </div>
-        <div style={{ fontSize: '13px', color: '#5a6480' }}>折扣管理</div>
+        <div className={styles.headerSystemLabel}>折扣管理</div>
       </header>
 
       <div className={styles.layout}>
@@ -430,7 +427,7 @@ function DiscountPanel() {
           )}
 
           {isCustomerSelected && customerCandidates.length > 0 && (
-            <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid #e8ecf4' }}>
+            <div className={styles.sidebarSwitchSection}>
               <div className={styles.sectionLabel}>其他搜尋結果（點擊切換）</div>
               {customerCandidates.map(c => (
                 <div
@@ -440,8 +437,8 @@ function DiscountPanel() {
                 >
                   <div className={styles.candidateMiniAvatar}>{c.name.charAt(0)}</div>
                   <span className={styles.candidateMiniName}>{c.name}</span>
-                  <span style={{ fontSize: '11px', color: '#96a0b8', marginLeft: 'auto' }}>#{c.id}</span>
-                  <span style={{ fontSize: '12px', color: '#4a78c4', marginLeft: '4px' }}>→</span>
+                  <span className={styles.candidateMiniId}>#{c.id}</span>
+                  <span className={styles.candidateMiniArrow}>→</span>
                 </div>
               ))}
             </div>
@@ -457,29 +454,18 @@ function DiscountPanel() {
 
           {/* ── 批次修改工具列 ── */}
           {selectedIds.size > 0 && (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: '12px',
-              padding: '10px 14px', marginBottom: '8px',
-              backgroundColor: '#eef2fb', borderRadius: '8px',
-              border: '1px solid #c5d3f0', flexWrap: 'wrap',
-            }}>
-              <span style={{ fontSize: '13px', color: '#4a78c4', fontWeight: 600 }}>
-                已選 {selectedIds.size} 筆
-              </span>
-              <span style={{ fontSize: '13px', color: '#5a6480' }}>統一設定為</span>
+            <div className={styles.batchToolbar}>
+              <span className={styles.batchToolbarCount}>已選 {selectedIds.size} 筆</span>
+              <span className={styles.batchToolbarMuted}>統一設定為</span>
               <input
                 type="number" min="1" max="100"
                 placeholder="折扣%"
                 value={batchValue}
                 onChange={e => setBatchValue(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleBatchSave()}
-                style={{
-                  width: '72px', padding: '4px 8px',
-                  border: '1px solid #c5d3f0', borderRadius: '6px',
-                  fontSize: '13px', textAlign: 'center',
-                }}
+                className={styles.batchInput}
               />
-              <span style={{ fontSize: '13px', color: '#5a6480' }}>%</span>
+              <span className={styles.batchToolbarMuted}>%</span>
               <button
                 className={styles.btnConfirm}
                 onClick={handleBatchSave}
@@ -498,13 +484,12 @@ function DiscountPanel() {
           )}
 
           {/* ── 主表格 + Audit Log 側欄 並排 ── */}
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+          <div className={styles.tableAndAudit}>
 
             <div className={styles.tableWrap} style={{ flex: 1, minWidth: 0 }}>
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    {/* 全選 checkbox */}
                     <th className={styles.th} style={{ width: '36px' }}>
                       {validDiscounts.length > 0 && (
                         <input
@@ -555,12 +540,12 @@ function DiscountPanel() {
 
                     return (
                       <tr key={discount.id} style={{
+                        // 動態背景色：isAuditOpen / isEditing / isSelected の三種類があるため inline を維持
                         backgroundColor: isAuditOpen ? '#f0f4fd' : isEditing ? '#eef2fb' : isSelected ? '#f5f8ff' : 'transparent',
                         outline: isEditing ? '2px solid #4a78c4' : 'none',
                         outlineOffset: '-2px',
                         transition: 'background 0.12s',
                       }}>
-                        {/* 勾選框 */}
                         <td className={tdClass} style={{ textAlign: 'center' }}>
                           <input
                             type="checkbox"
@@ -622,19 +607,19 @@ function DiscountPanel() {
                               <span className={styles.priceAfter}>¥{fmt(afterPrice)}</span>
                             </div>
                           ) : (
-                            <span style={{ color: '#96a0b8', fontSize: '12px' }}>—</span>
+                            <span className={styles.noPriceCell}>—</span>
                           )}
                         </td>
                         <td className={tdClass}>
                           <div style={{ display: 'flex', gap: '6px' }}>
                             {!isEditing && (
                               <>
-                                {/* 歷史按鈕 */}
                                 <button
                                   className={styles.btnIcon}
                                   title="變更歷史"
                                   onClick={() => openAuditPanel(discount.id)}
                                   style={{
+                                    // audit panel の開閉状態で色が変わるため inline を維持
                                     color: isAuditOpen ? '#4a78c4' : '#7a88a8',
                                     borderColor: isAuditOpen ? '#4a78c4' : undefined,
                                     backgroundColor: isAuditOpen ? '#e8eefb' : undefined,
@@ -657,16 +642,12 @@ function DiscountPanel() {
                 <div className={styles.tableFooter}>
                   {!showAddForm ? (
                     <button className={styles.btnAddRow} onClick={handleShowAddForm}>
-                      <span style={{
-                        width: '20px', height: '20px', borderRadius: '4px',
-                        border: '1px dashed #c2cade', display: 'inline-flex',
-                        alignItems: 'center', justifyContent: 'center', fontSize: '14px',
-                      }}>＋</span>
+                      <span className={styles.addFormPlusIcon}>＋</span>
                       新增折扣
                     </button>
                   ) : (
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap', padding: '4px 0' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div className={styles.addFormRow}>
+                      <div className={styles.addFormField}>
                         <label className={styles.formLabel}>商品名稱</label>
                         <select
                           className={styles.formSelect}
@@ -680,7 +661,7 @@ function DiscountPanel() {
                           ))}
                         </select>
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div className={styles.addFormField}>
                         <label className={styles.formLabel}>折扣率（%）</label>
                         <input
                           className={styles.formInput}
@@ -691,7 +672,7 @@ function DiscountPanel() {
                           onChange={e => setNewDiscount({ ...newDiscount, discountRatio: e.target.value })}
                         />
                       </div>
-                      <div style={{ display: 'flex', gap: '8px' }}>
+                      <div className={styles.addFormActions}>
                         <button className={styles.btnConfirm} onClick={handleCreate}>確認新增</button>
                         <button
                           className={styles.btnConfirm}
@@ -707,81 +688,52 @@ function DiscountPanel() {
 
             {/* ── Audit Log 側欄 ── */}
             {auditPanelDiscountId !== null && (
-              <div style={{
-                width: '260px', flexShrink: 0,
-                backgroundColor: '#f8faff',
-                border: '1px solid #dde3f0',
-                borderRadius: '10px',
-                padding: '16px',
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <div className={styles.auditPanel}>
+                <div className={styles.auditPanelHeader}>
                   <div>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#2c3554' }}>
-                      變更歷史
-                    </div>
+                    <div className={styles.auditPanelTitle}>變更歷史</div>
                     {auditDiscount && (
-                      <div style={{ fontSize: '11px', color: '#7a88a8', marginTop: '2px' }}>
+                      <div className={styles.auditPanelProductName}>
                         {auditDiscount.product.name}
                       </div>
                     )}
                   </div>
                   <button
+                    className={styles.auditPanelCloseBtn}
                     onClick={() => setAuditPanelDiscountId(null)}
-                    style={{
-                      background: 'none', border: 'none', cursor: 'pointer',
-                      fontSize: '16px', color: '#96a0b8', padding: '2px 6px',
-                    }}
                     title="關閉"
                   >✕</button>
                 </div>
 
                 {isAuditLoading ? (
-                  <div style={{ textAlign: 'center', color: '#96a0b8', fontSize: '13px', padding: '20px 0' }}>
-                    載入中…
-                  </div>
+                  <div className={styles.auditPanelMessage}>載入中…</div>
                 ) : auditLogs.length === 0 ? (
-                  <div style={{ textAlign: 'center', color: '#96a0b8', fontSize: '13px', padding: '20px 0' }}>
-                    尚無變更記錄
-                  </div>
+                  <div className={styles.auditPanelMessage}>尚無變更記錄</div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div className={styles.auditLogList}>
                     {auditLogs.map(log => (
-                      <div key={log.id} style={{
-                        backgroundColor: '#fff',
-                        border: '1px solid #e8ecf4',
-                        borderRadius: '8px',
-                        padding: '10px 12px',
-                      }}>
-                        {/* 操作類型 badge */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                          <span style={{
-                            fontSize: '11px', fontWeight: 600, padding: '2px 7px',
-                            borderRadius: '4px',
-                            backgroundColor: log.action === 'CREATE' ? '#e8f5e9' : log.action.includes('UPDATE') ? '#e8eefb' : '#fdecea',
-                            color: log.action === 'CREATE' ? '#2e7d32' : log.action.includes('UPDATE') ? '#4a78c4' : '#c0392b',
-                          }}>
+                      <div key={log.id} className={styles.auditLogItem}>
+                        <div className={styles.auditLogTop}>
+                          {/* action badge：種別ごとの色は CSS class で管理 */}
+                          <span className={`${styles.auditLogActionBadge} ${getAuditBadgeClass(log.action)}`}>
                             {actionLabel[log.action] ?? log.action}
                           </span>
-                          <span style={{ fontSize: '11px', color: '#96a0b8' }}>
+                          <span className={styles.auditLogDate}>
                             {formatDateTime(log.operatedAt)}
                           </span>
                         </div>
-                        {/* 折扣率變化 */}
-                        <div style={{ fontSize: '13px', color: '#3a4466' }}>
+                        <div className={styles.auditLogRatio}>
                           {log.oldRatio !== null ? (
                             <>
-                              <span style={{ color: '#96a0b8' }}>{Math.round(log.oldRatio * 100)}%</span>
-                              <span style={{ margin: '0 6px', color: '#c2cade' }}>→</span>
-                              <span style={{ fontWeight: 600, color: '#2c3554' }}>{Math.round(log.newRatio * 100)}%</span>
+                              <span className={styles.auditLogOldRatio}>{Math.round(log.oldRatio * 100)}%</span>
+                              <span className={styles.auditLogArrow}>→</span>
+                              <span className={styles.auditLogNewRatio}>{Math.round(log.newRatio * 100)}%</span>
                             </>
                           ) : (
-                            <span style={{ fontWeight: 600, color: '#2c3554' }}>設為 {Math.round(log.newRatio * 100)}%</span>
+                            <span className={styles.auditLogNewRatio}>設為 {Math.round(log.newRatio * 100)}%</span>
                           )}
                         </div>
-                        {/* 操作人 */}
-                        <div style={{ fontSize: '11px', color: '#96a0b8', marginTop: '4px' }}>
-                          {log.operatedBy}
-                        </div>
+                        <div className={styles.auditLogOperator}>{log.operatedBy}</div>
                       </div>
                     ))}
                   </div>

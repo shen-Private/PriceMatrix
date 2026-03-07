@@ -147,6 +147,7 @@ function InventoryPanel() {
       showToast('歷史載入失敗', 'error');
     }
   };
+
   const startEditSafety = (item: InventoryItem) => {
     setEditingSafetyId(item.id);
     setEditingSafetyValue(item.safetyStock !== null ? item.safetyStock.toString() : '');
@@ -168,6 +169,7 @@ function InventoryPanel() {
     } catch (err) { showToast('儲存失敗', 'error'); }
     finally { setSavingSafetyId(null); }
   };
+
   // ===== 過濾 =====
   const filteredItems = filterType
     ? items.filter(i => i.item.stockType === filterType)
@@ -184,22 +186,22 @@ function InventoryPanel() {
         const isLow = item.safetyStock !== null && qty <= item.safetyStock;
         const label = item.stockType === 'outsource_warehouse' ? `${qty} ${item.unit}（估算）` : `${qty} ${item.unit}`;
         return (
-          <span style={{ color: isLow ? '#e74c3c' : '#2c3e50', fontWeight: 500 }}>
+          <span className={isLow ? styles.stockLow : styles.stockNormal}>
             {isLow && '⚠ '}
             {label}
           </span>
         );
       }
       case 'outsource_infinite':
-        return <span style={{ color: '#3498db', fontWeight: 500 }}>常備品</span>;
+        return <span className={styles.stockInfinite}>常備品</span>;
 
       case 'outsource_dropship':
-        if (!latestInquiry) return <span style={{ color: '#96a0b8' }}>尚無情報</span>;
+        if (!latestInquiry) return <span className={styles.stockNoData}>尚無情報</span>;
         const dateStr = new Date(latestInquiry.confirmedAt).toLocaleDateString('ja-JP');
         return (
-          <span style={{ color: '#9b59b6', fontSize: '13px' }}>
+          <span className={styles.stockDropship}>
             {latestInquiry.quantity !== null ? `${latestInquiry.quantity} ${item.unit}` : '不確定'}
-            <span style={{ color: '#96a0b8', marginLeft: '6px' }}>（{dateStr} 確認）</span>
+            <span className={styles.stockDropshipDate}>（{dateStr} 確認）</span>
           </span>
         );
     }
@@ -207,6 +209,7 @@ function InventoryPanel() {
 
   const fmt = (d: string) => new Date(d).toLocaleDateString('ja-JP');
   const colSpan = canSetSafetyStock ? 6 : 5;
+
   return (
     <div className={styles.root}>
 
@@ -215,8 +218,8 @@ function InventoryPanel() {
           <div className={styles.headerLogoMark}>PM</div>
           PriceMatrix
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ fontSize: '13px', color: '#5a6480' }}>倉儲系統</div>
+        <div className={styles.headerRight}>
+          <div className={styles.headerSystemLabel}>倉儲系統</div>
           <button
             className={styles.btnSearch}
             style={{ width: 'auto', padding: '6px 14px' }}
@@ -224,12 +227,15 @@ function InventoryPanel() {
           >
             📷 掃碼入出庫
           </button>
-        </div>      </header>
+        </div>
+      </header>
 
       <div className={styles.layout}>
         <aside className={styles.sidebar}>
           <div>
             <div className={styles.sectionLabel}>篩選條件</div>
+
+            {/* 全部 */}
             <div
               className={styles.statItem}
               onClick={() => setFilterType('')}
@@ -243,13 +249,10 @@ function InventoryPanel() {
                 transition: 'all 0.15s',
               }}
             >
-              <span style={{
-                display: 'inline-block', width: '10px', height: '10px',
-                borderRadius: '50%',
-                backgroundColor: '#5a6480',
-                marginRight: '8px',
-                flexShrink: 0,
-              }} />
+              <span
+                className={styles.filterDot}
+                style={{ backgroundColor: '#5a6480' }}
+              />
               <span
                 className={styles.statLabel}
                 style={{
@@ -260,11 +263,9 @@ function InventoryPanel() {
                 全部
               </span>
             </div>
+
             {(Object.keys(STOCK_TYPE_LABEL) as StockType[]).map(k => {
-              {/* 全部 */ }
-
               const isSelected = filterType === k;
-
               return (
                 <div
                   key={k}
@@ -280,22 +281,23 @@ function InventoryPanel() {
                     transition: 'all 0.15s',
                   }}
                 >
-                  <span style={{
-                    display: 'inline-block', width: '10px', height: '10px',
-                    borderRadius: '50%',
-                    backgroundColor: STOCK_TYPE_COLOR[k],
-                    marginRight: '8px',
-                    flexShrink: 0,
-                  }} />
+                  <span
+                    className={styles.filterDot}
+                    style={{ backgroundColor: STOCK_TYPE_COLOR[k] }}
+                  />
                   <span
                     className={styles.statLabel}
-                    style={{ fontWeight: isSelected ? 600 : undefined, color: isSelected ? STOCK_TYPE_COLOR[k] : undefined }}
+                    style={{
+                      fontWeight: isSelected ? 600 : undefined,
+                      color: isSelected ? STOCK_TYPE_COLOR[k] : undefined,
+                    }}
                   >
                     {STOCK_TYPE_LABEL[k]}
                   </span>
                 </div>
               );
             })}
+
             <button
               className={styles.btnSearch}
               onClick={() => {
@@ -348,10 +350,11 @@ function InventoryPanel() {
                   const isExpanded = expandedInquiry === item.id;
                   const isEditingSafety = editingSafetyId === item.id;
                   const isSavingSafety = savingSafetyId === item.id;
+
                   return (
                     <React.Fragment key={item.id}>
 
-                      <tr key={item.id} style={{ backgroundColor: isExpanded ? '#f8f9fd' : 'transparent' }}>
+                      <tr style={{ backgroundColor: isExpanded ? '#f8f9fd' : 'transparent' }}>
                         <td className={tdClass}>
                           <div style={{ fontWeight: 500 }}>{item.product.name}</div>
                         </td>
@@ -359,7 +362,7 @@ function InventoryPanel() {
                           <span className={styles.badge}>{item.product.category.name}</span>
                         </td>
                         <td className={tdClass}>
-
+                          {/* 形態バッジ：色は動的なので inline style を保持 */}
                           <span style={{
                             display: 'inline-flex', alignItems: 'center', gap: '5px',
                             fontSize: '12px', color: STOCK_TYPE_COLOR[item.stockType]
@@ -380,26 +383,39 @@ function InventoryPanel() {
                               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 {isEditingSafety ? (
                                   <>
-                                    <input type="number" min="0" value={editingSafetyValue}
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={editingSafetyValue}
                                       onChange={e => setEditingSafetyValue(e.target.value)}
-                                      onKeyDown={e => { if (e.key === 'Enter') handleSaveSafety(item); if (e.key === 'Escape') setEditingSafetyId(null); }}
+                                      onKeyDown={e => {
+                                        if (e.key === 'Enter') handleSaveSafety(item);
+                                        if (e.key === 'Escape') setEditingSafetyId(null);
+                                      }}
                                       autoFocus
-                                      style={{ width: '60px', padding: '4px 6px', border: '1px solid #4a78c4', borderRadius: '6px', fontSize: '13px', textAlign: 'center' }}
+                                      className={styles.safetyInput}
                                     />
-                                    <span style={{ fontSize: '12px', color: '#96a0b8' }}>{item.unit}</span>
+                                    <span className={styles.safetyUnit}>{item.unit}</span>
                                     <button className={styles.btnConfirm} onClick={() => handleSaveSafety(item)}>確認</button>
-                                    <button className={styles.btnIcon} style={{ color: '#c0392b', borderColor: '#e8b4b0' }} onClick={() => setEditingSafetyId(null)}>✕</button>
+                                    <button
+                                      className={styles.btnIcon}
+                                      style={{ color: '#c0392b', borderColor: '#e8b4b0' }}
+                                      onClick={() => setEditingSafetyId(null)}
+                                    >✕</button>
                                   </>
                                 ) : (
-                                  <span onClick={() => startEditSafety(item)} title="點擊設定安全庫存下限"
-                                    style={{ cursor: 'pointer', fontSize: '13px', color: item.safetyStock !== null ? '#2c3554' : '#96a0b8', fontWeight: item.safetyStock !== null ? 500 : 400 }}>
+                                  <span
+                                    onClick={() => startEditSafety(item)}
+                                    title="點擊設定安全庫存下限"
+                                    className={item.safetyStock !== null ? styles.safetyDisplay : styles.safetyDisplayEmpty}
+                                  >
                                     {isSavingSafety ? '…' : item.safetyStock !== null ? `${item.safetyStock} ${item.unit}` : '— 點擊設定'}
-                                    {!isSavingSafety && <span style={{ fontSize: '11px', marginLeft: '4px', opacity: 0.4 }}>✎</span>}
+                                    {!isSavingSafety && <span className={styles.safetyEditIcon}>✎</span>}
                                   </span>
                                 )}
                               </div>
                             ) : (
-                              <span style={{ color: '#c2cade', fontSize: '12px' }}>—</span>
+                              <span className={styles.safetyNA}>—</span>
                             )}
                           </td>
                         )}
@@ -425,38 +441,47 @@ function InventoryPanel() {
                       {/* 新增廠商情報表單 */}
                       {isDropship && showInquiryForm === item.id && (
                         <tr key={`form-${item.id}`}>
-                          <td colSpan={colSpan} style={{ padding: '12px 16px', backgroundColor: '#f0f4ff', borderBottom: '1px solid #e8ecf4' }}>
-                            <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <td colSpan={colSpan} className={styles.inquiryFormCell}>
+                            <div className={styles.inquiryFormRow}>
+                              <div className={styles.inquiryFormField}>
                                 <label className={styles.formLabel}>確認者</label>
-                                <input className={styles.formInput} style={{ width: '100px' }}
+                                <input
+                                  className={styles.formInput}
+                                  style={{ width: '100px' }}
                                   placeholder="姓名"
                                   value={newInquiry.confirmedBy}
                                   onChange={e => setNewInquiry({ ...newInquiry, confirmedBy: e.target.value })}
                                 />
                               </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <div className={styles.inquiryFormField}>
                                 <label className={styles.formLabel}>數量（可空白）</label>
-                                <input className={styles.formInput} style={{ width: '80px' }}
-                                  type="number" placeholder="—"
+                                <input
+                                  className={styles.formInput}
+                                  style={{ width: '80px' }}
+                                  type="number"
+                                  placeholder="—"
                                   value={newInquiry.quantity}
                                   onChange={e => setNewInquiry({ ...newInquiry, quantity: e.target.value })}
                                 />
                               </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <div className={styles.inquiryFormField}>
                                 <label className={styles.formLabel}>備註</label>
-                                <input className={styles.formInput} style={{ width: '180px' }}
+                                <input
+                                  className={styles.formInput}
+                                  style={{ width: '180px' }}
                                   placeholder="例：月末補貨"
                                   value={newInquiry.note}
                                   onChange={e => setNewInquiry({ ...newInquiry, note: e.target.value })}
                                 />
                               </div>
-                              <div style={{ display: 'flex', gap: '8px' }}>
-                                <button className={styles.btnConfirm}
+                              <div className={styles.inquiryFormActions}>
+                                <button
+                                  className={styles.btnConfirm}
                                   onClick={() => handleAddInquiry(item.id)}
                                   disabled={!newInquiry.confirmedBy}
                                 >記錄</button>
-                                <button className={styles.btnConfirm}
+                                <button
+                                  className={styles.btnConfirm}
                                   style={{ backgroundColor: 'transparent', color: '#5a6480', boxShadow: 'none', border: '1px solid #d0d7e8' }}
                                   onClick={() => { setShowInquiryForm(null); setNewInquiry({ confirmedBy: '', quantity: '', note: '' }); }}
                                 >取消</button>
@@ -469,28 +494,26 @@ function InventoryPanel() {
                       {/* 廠商情報歷史 */}
                       {isDropship && isExpanded && (
                         <tr key={`history-${item.id}`}>
-                          <td colSpan={colSpan} style={{ padding: '8px 24px 16px', backgroundColor: '#f8f9fd', borderBottom: '1px solid #e8ecf4' }}>
-                            <div style={{ fontSize: '12px', color: '#5a6480', marginBottom: '8px' }}>廠商情報歷史</div>
+                          <td colSpan={colSpan} className={styles.inquiryHistoryCell}>
+                            <div className={styles.inquiryHistoryTitle}>廠商情報歷史</div>
                             {(inquiryHistory[item.id] || []).length === 0 ? (
-                              <div style={{ color: '#96a0b8', fontSize: '13px' }}>尚無記錄</div>
+                              <div className={styles.inquiryHistoryEmpty}>尚無記錄</div>
                             ) : (
                               (inquiryHistory[item.id] || []).map(log => (
-                                <div key={log.id} style={{
-                                  display: 'flex', gap: '16px', alignItems: 'baseline',
-                                  padding: '6px 0', borderBottom: '1px solid #eef0f6', fontSize: '13px'
-                                }}>
-                                  <span style={{ color: '#96a0b8', minWidth: '90px' }}>{fmt(log.confirmedAt)}</span>
-                                  <span style={{ color: '#5a6480', minWidth: '60px' }}>{log.confirmedBy}</span>
-                                  <span style={{ fontWeight: 500 }}>
+                                <div key={log.id} className={styles.inquiryLogRow}>
+                                  <span className={styles.inquiryLogDate}>{fmt(log.confirmedAt)}</span>
+                                  <span className={styles.inquiryLogName}>{log.confirmedBy}</span>
+                                  <span className={styles.inquiryLogQty}>
                                     {log.quantity !== null ? `${log.quantity} ${item.unit}` : '不確定'}
                                   </span>
-                                  {log.note && <span style={{ color: '#7a8499' }}>{log.note}</span>}
+                                  {log.note && <span className={styles.inquiryLogNote}>{log.note}</span>}
                                 </div>
                               ))
                             )}
                           </td>
                         </tr>
                       )}
+
                     </React.Fragment>
                   );
                 })}

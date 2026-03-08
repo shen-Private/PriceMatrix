@@ -4,7 +4,7 @@ import styles from './InventoryPanel.module.css';
 import React from 'react';
 import { useAuth } from '../../AuthContext';
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
-
+axios.defaults.withCredentials = true;
 // ===== 型別定義 =====
 interface Category {
   id: number;
@@ -92,6 +92,22 @@ function InventoryPanel() {
   const [toast, setToast] = useState<Toast | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ===== 模式切換：overview / stocktake / batchIn =====
+  type PanelMode = 'overview' | 'stocktake' | 'batchIn';
+  const [mode, setMode] = useState<PanelMode>('overview');
+
+  // ===== 盤點模式 =====
+  // key: item.id, value: 輸入的實際數量（字串）
+  const [stocktakeValues, setStocktakeValues] = useState<Record<number, string>>({});
+  const [stocktakeOperator, setStocktakeOperator] = useState('');
+  const [isSubmittingStocktake, setIsSubmittingStocktake] = useState(false);
+
+  // ===== 批次入庫 =====
+  // key: item.id, value: 輸入的入庫數量（字串）
+  const [batchValues, setBatchValues] = useState<Record<number, string>>({});
+  const [batchOperator, setBatchOperator] = useState('');
+  const [isSubmittingBatch, setIsSubmittingBatch] = useState(false);
+
   const showToast = (message: string, type: Toast['type'] = 'success') => {
     setToast({ message, type });
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -170,6 +186,62 @@ function InventoryPanel() {
     finally { setSavingSafetyId(null); }
   };
 
+  // ===== 盤點提交 =====
+  const handleSubmitStocktake = async () => {
+    if (!stocktakeOperator.trim()) { showToast('請輸入操作者姓名', 'error'); return; }
+    const entries = Object.entries(stocktakeValues).filter(([, v]) => v !== '');
+    if (entries.length === 0) { showToast('尚未輸入任何盤點數量', 'error'); return; }
+    setIsSubmittingStocktake(true);
+    try {
+      for (const [itemId, val] of entries) {
+        const actualQty = parseInt(val, 10);
+        if (isNaN(actualQty) || actualQty < 0) continue;
+        await axios.post(`${API_URL}/api/inventory/transactions/adjust`, {
+          itemId: parseInt(itemId),
+          actualQuantity: actualQty,
+          operatedBy: stocktakeOperator,
+          note: '盤點調整',
+        });
+      }
+      showToast(`盤點完成，共 ${entries.length} 筆`);
+      setStocktakeValues({});
+      setStocktakeOperator('');
+      setMode('overview');
+      loadItems();
+    } catch (err) {
+      showToast('盤點提交失敗', 'error');
+    } finally {
+      setIsSubmittingStocktake(false);
+    }
+  };
+
+  // ===== 批次入庫提交 =====
+  const handleSubmitBatchIn = async () => {
+    if (!batchOperator.trim()) { showToast('請輸入操作者姓名', 'error'); return; }
+    const entries = Object.entries(batchValues).filter(([, v]) => v !== '' && parseInt(v) > 0);
+    if (entries.length === 0) { showToast('尚未輸入任何入庫數量', 'error'); return; }
+    setIsSubmittingBatch(true);
+    try {
+      await axios.post(`${API_URL}/api/inventory/transactions/batch`, {
+        operatedBy: batchOperator,
+        items: entries.map(([itemId, qty]) => ({
+          itemId: parseInt(itemId),
+          quantity: parseInt(qty),
+          note: null,
+        })),
+      });
+      showToast(`批次入庫完成，共 ${entries.length} 筆`);
+      setBatchValues({});
+      setBatchOperator('');
+      setMode('overview');
+      loadItems();
+    } catch (err) {
+      showToast('批次入庫失敗', 'error');
+    } finally {
+      setIsSubmittingBatch(false);
+    }
+  };
+
   // ===== 過濾 =====
   const filteredItems = filterType
     ? items.filter(i => i.item.stockType === filterType)
@@ -220,6 +292,20 @@ function InventoryPanel() {
         </div>
         <div className={styles.headerRight}>
           <div className={styles.headerSystemLabel}>倉儲系統</div>
+          <button
+            className={styles.btnSearch}
+            style={{ width: 'auto', padding: '6px 14px', backgroundColor: mode === 'stocktake' ? '#e67e22' : undefined, borderColor: mode === 'stocktake' ? '#e67e22' : undefined }}
+            onClick={() => setMode(mode === 'stocktake' ? 'overview' : 'stocktake')}
+          >
+            📋 盤點模式
+          </button>
+          <button
+            className={styles.btnSearch}
+            style={{ width: 'auto', padding: '6px 14px', backgroundColor: mode === 'batchIn' ? '#2980b9' : undefined, borderColor: mode === 'batchIn' ? '#2980b9' : undefined }}
+            onClick={() => setMode(mode === 'batchIn' ? 'overview' : 'batchIn')}
+          >
+            📦 批次入庫
+          </button>
           <button
             className={styles.btnSearch}
             style={{ width: 'auto', padding: '6px 14px' }}
@@ -313,7 +399,174 @@ function InventoryPanel() {
           </div>
         </aside>
 
-        <main className={styles.main}>庫存狀況
+        <main className={styles.main}>
+
+          {/* ===== 盤點模式 ===== */}
+          {mode === 'stocktake' && (
+            <div>
+              <div className={styles.mainTitle}>📋 盤點模式</div>
+              <div className={styles.mainSubtitle}>
+                輸入實際盤點數量，系統自動計算差異並記錄 ADJUST 異動。
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '16px 0' }}>
+                <label style={{ fontSize: '13px', color: '#5a6480', whiteSpace: 'nowrap' }}>操作者</label>
+                <input
+                  className={styles.formInput}
+                  style={{ width: '160px' }}
+                  placeholder="姓名"
+                  value={stocktakeOperator}
+                  onChange={e => setStocktakeOperator(e.target.value)}
+                />
+              </div>
+              <div className={styles.tableWrap}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th className={styles.th}>商品</th>
+                      <th className={styles.th}>分類</th>
+                      <th className={styles.th}>目前庫存</th>
+                      <th className={styles.th}>實際數量（盤點）</th>
+                      <th className={styles.th}>差異</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items
+                      .filter(r => r.item.stockType === 'internal' || r.item.stockType === 'outsource_warehouse')
+                      .map((row, idx, arr) => {
+                        const { item, stock } = row;
+                        const current = stock?.quantity ?? 0;
+                        const inputVal = stocktakeValues[item.id] ?? '';
+                        const actual = inputVal !== '' ? parseInt(inputVal, 10) : null;
+                        const diff = actual !== null && !isNaN(actual) ? actual - current : null;
+                        const isLast = idx === arr.length - 1;
+                        const tdClass = isLast ? styles.tdLast : styles.td;
+                        return (
+                          <tr key={item.id}>
+                            <td className={tdClass}>{item.product.name}</td>
+                            <td className={tdClass}><span className={styles.badge}>{item.product.category.name}</span></td>
+                            <td className={tdClass}>{current} {item.unit}</td>
+                            <td className={tdClass}>
+                              <input
+                                type="number"
+                                min="0"
+                                className={styles.safetyInput}
+                                placeholder="—"
+                                value={inputVal}
+                                onChange={e => setStocktakeValues(prev => ({ ...prev, [item.id]: e.target.value }))}
+                              />
+                              <span style={{ marginLeft: '4px', fontSize: '12px', color: '#96a0b8' }}>{item.unit}</span>
+                            </td>
+                            <td className={tdClass}>
+                              {diff !== null && !isNaN(diff) && (
+                                <span style={{ fontWeight: 600, color: diff > 0 ? '#27ae60' : diff < 0 ? '#e74c3c' : '#96a0b8' }}>
+                                  {diff > 0 ? `+${diff}` : diff === 0 ? '±0' : `${diff}`}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                <button
+                  className={styles.btnConfirm}
+                  onClick={handleSubmitStocktake}
+                  disabled={isSubmittingStocktake}
+                >
+                  {isSubmittingStocktake ? '送出中…' : '確認送出盤點'}
+                </button>
+                <button
+                  className={styles.btnConfirm}
+                  style={{ backgroundColor: 'transparent', color: '#5a6480', boxShadow: 'none', border: '1px solid #d0d7e8' }}
+                  onClick={() => { setMode('overview'); setStocktakeValues({}); setStocktakeOperator(''); }}
+                >
+                  取消
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ===== 批次入庫模式 ===== */}
+          {mode === 'batchIn' && (
+            <div>
+              <div className={styles.mainTitle}>📦 批次入庫</div>
+              <div className={styles.mainSubtitle}>
+                一次輸入多筆商品入庫數量，系統統一送出並產生相同 batchId。
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '16px 0' }}>
+                <label style={{ fontSize: '13px', color: '#5a6480', whiteSpace: 'nowrap' }}>操作者</label>
+                <input
+                  className={styles.formInput}
+                  style={{ width: '160px' }}
+                  placeholder="姓名"
+                  value={batchOperator}
+                  onChange={e => setBatchOperator(e.target.value)}
+                />
+              </div>
+              <div className={styles.tableWrap}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th className={styles.th}>商品</th>
+                      <th className={styles.th}>分類</th>
+                      <th className={styles.th}>目前庫存</th>
+                      <th className={styles.th}>入庫數量</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items
+                      .filter(r => r.item.stockType === 'internal' || r.item.stockType === 'outsource_warehouse')
+                      .map((row, idx, arr) => {
+                        const { item, stock } = row;
+                        const current = stock?.quantity ?? 0;
+                        const inputVal = batchValues[item.id] ?? '';
+                        const isLast = idx === arr.length - 1;
+                        const tdClass = isLast ? styles.tdLast : styles.td;
+                        return (
+                          <tr key={item.id}>
+                            <td className={tdClass}>{item.product.name}</td>
+                            <td className={tdClass}><span className={styles.badge}>{item.product.category.name}</span></td>
+                            <td className={tdClass}>{current} {item.unit}</td>
+                            <td className={tdClass}>
+                              <input
+                                type="number"
+                                min="0"
+                                className={styles.safetyInput}
+                                placeholder="—"
+                                value={inputVal}
+                                onChange={e => setBatchValues(prev => ({ ...prev, [item.id]: e.target.value }))}
+                              />
+                              <span style={{ marginLeft: '4px', fontSize: '12px', color: '#96a0b8' }}>{item.unit}</span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                <button
+                  className={styles.btnConfirm}
+                  onClick={handleSubmitBatchIn}
+                  disabled={isSubmittingBatch}
+                >
+                  {isSubmittingBatch ? '送出中…' : '確認批次入庫'}
+                </button>
+                <button
+                  className={styles.btnConfirm}
+                  style={{ backgroundColor: 'transparent', color: '#5a6480', boxShadow: 'none', border: '1px solid #d0d7e8' }}
+                  onClick={() => { setMode('overview'); setBatchValues({}); setBatchOperator(''); }}
+                >
+                  取消
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ===== 庫存總覽（預設） ===== */}
+          {mode === 'overview' && (<div>
           <div>
             <div className={styles.mainTitle}>庫存總覽</div>
             <div className={styles.mainSubtitle}>
@@ -520,6 +773,7 @@ function InventoryPanel() {
               </tbody>
             </table>
           </div>
+          </div>)}
         </main>
       </div>
 

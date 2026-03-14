@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { BrowserMultiFormatReader } from '@zxing/browser';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+axios.defaults.withCredentials = true;
 
 interface Product {
     id: number;
@@ -17,19 +18,33 @@ interface InventoryItem {
     barcode: string | null;
 }
 
-function ScanPanel() {
-    const [barcode, setBarcode] = useState('');
-    const [foundItem, setFoundItem] = useState<InventoryItem | null>(null);
-    const [quantity, setQuantity] = useState('');
-    const [transactionType, setTransactionType] = useState<'in' | 'out'>('in');
-    const [message, setMessage] = useState('');
-    const [carrier, setCarrier] = useState('');
+// 清單裡的一筆
+interface ScanEntry {
+    item: InventoryItem;
+    quantity: number;
+}
 
+type ScanMode = 'scan' | 'batch';
+
+function ScanPanel() {
+    const [panelMode, setPanelMode] = useState<ScanMode>('scan');
+
+    // ===== 掃碼狀態 =====
+    const [barcode, setBarcode] = useState('');
+    const [message, setMessage] = useState('');
     const [scanning, setScanning] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
     const readerRef = useRef<BrowserMultiFormatReader | null>(null);
-    const hasScannedRef = useRef(false); // 鎖：掃到一次後不再觸發
-    const controlsRef = useRef<any>(null); // ZXing controls，用來停止 decode loop // 鎖：掃到一次後不再觸發
+    const hasScannedRef = useRef(false);
+    const controlsRef = useRef<any>(null);
+
+    // ===== 累積清單 =====
+    const [entries, setEntries] = useState<ScanEntry[]>([]);
+    const [carrier, setCarrier] = useState('');
+    const [operator, setOperator] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // ===== 相機操作 =====
     const stopScan = () => {
         if (controlsRef.current) {
             controlsRef.current.stop();
@@ -45,14 +60,12 @@ function ScanPanel() {
     };
 
     const startScan = async () => {
-        // 先強制清除上一次的 reader，避免舊 callback 殘留
         if (videoRef.current && videoRef.current.srcObject) {
             const stream = videoRef.current.srcObject as MediaStream;
             stream.getTracks().forEach(track => track.stop());
             videoRef.current.srcObject = null;
         }
         readerRef.current = null;
-
         hasScannedRef.current = false;
         setScanning(true);
         setMessage('');
@@ -76,7 +89,7 @@ function ScanPanel() {
                         }
                     }
                 );
-                controlsRef.current = controls; // 儲存 controls 供 stopScan 使用
+                controlsRef.current = controls;
             } catch (e) {
                 setMessage('無法開啟相機，請確認瀏覽器權限');
                 setScanning(false);
@@ -88,192 +101,231 @@ function ScanPanel() {
         return () => { stopScan(); };
     }, []);
 
+    // ===== 條碼查詢 → 加入清單 =====
     const searchByBarcode = async (code: string) => {
         if (!code.trim()) return;
         try {
             const res = await axios.get(`${API_URL}/api/inventory/items/barcode/${code}`);
-            setFoundItem(res.data);
+            const foundItem: InventoryItem = res.data;
             setMessage('');
+            setBarcode('');
+
+            // 同一商品已在清單 → 數量 +1
+            setEntries(prev => {
+                const existing = prev.find(e => e.item.id === foundItem.id);
+                if (existing) {
+                    return prev.map(e =>
+                        e.item.id === foundItem.id
+                            ? { ...e, quantity: e.quantity + 1 }
+                            : e
+                    );
+                }
+                return [...prev, { item: foundItem, quantity: 1 }];
+            });
         } catch {
-            setFoundItem(null);
             setMessage('找不到此條碼的商品');
         }
     };
 
-    const handleSearch = () => searchByBarcode(barcode);
+    const handleSearch = () => {
+        searchByBarcode(barcode);
+    };
+
+    // 清單數量調整
+    const updateQuantity = (itemId: number, val: string) => {
+        const n = parseInt(val, 10);
+        if (isNaN(n) || n < 1) return;
+        setEntries(prev => prev.map(e =>
+            e.item.id === itemId ? { ...e, quantity: n } : e
+        ));
+    };
+
+    // 清單移除
+    const removeEntry = (itemId: number) => {
+        setEntries(prev => prev.filter(e => e.item.id !== itemId));
+    };
+
+    // ===== 送出（呼叫 batch API）=====
+    const handleSubmit = async () => {
+        if (!operator.trim()) { setMessage('請輸入操作者姓名'); return; }
+        if (entries.length === 0) { setMessage('清單是空的'); return; }
+        setIsSubmitting(true);
+        try {
+            await axios.post(`${API_URL}/api/inventory/transactions/batch`, {
+                operatedBy: operator,
+                items: entries.map(e => ({
+                    itemId: e.item.id,
+                    quantity: e.quantity,
+                    note: carrier || null,
+                })),
+            });
+            setMessage('✓ 入庫完成');
+            setEntries([]);
+            setCarrier('');
+        } catch (err: any) {
+            setMessage(err.response?.data || '送出失敗');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    // ===== 共用樣式 =====
+    const s = {
+        wrap: { padding: '24px', maxWidth: '520px', margin: '0 auto', fontFamily: "'IBM Plex Sans JP', 'Noto Sans TC', sans-serif", fontSize: '14px', color: '#1e2740' } as React.CSSProperties,
+        label: { display: 'block', marginBottom: '6px', fontSize: '12px', color: '#5a6480', fontWeight: 500 } as React.CSSProperties,
+        input: { width: '100%', padding: '10px 12px', borderRadius: '7px', border: '1px solid #d0d7e8', fontSize: '14px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' } as React.CSSProperties,
+        btnPrimary: { padding: '10px 16px', backgroundColor: '#4a78c4', color: '#fff', border: 'none', borderRadius: '7px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 } as React.CSSProperties,
+        btnOutline: (active: boolean, color = '#4a78c4') => ({ flex: 1, padding: '10px', borderRadius: '7px', border: `2px solid ${active ? color : '#d0d7e8'}`, backgroundColor: active ? color + '18' : '#fff', cursor: 'pointer', fontSize: '12px', fontWeight: active ? 600 : 400, color: active ? color : '#5a6480' }) as React.CSSProperties,
+    };
 
     return (
-        <div style={{ padding: '32px', maxWidth: '480px', margin: '0 auto' }}>
-            <h2 style={{ marginBottom: '24px' }}>掃碼入出庫</h2>
+        <div style={s.wrap}>
 
-            {/* 條碼輸入區 */}
-            <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#5a6480' }}>
-                    條碼
-                </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                    <input
-                        style={{ flex: 1, padding: '10px 12px', borderRadius: '7px', border: '1px solid #d0d7e8', fontSize: '14px' }}
-                        value={barcode}
-                        onChange={e => setBarcode(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                        placeholder="輸入或掃描條碼"
-                    />
-                    {barcode && (
-                        <button
-                            onClick={() => { setBarcode(''); setFoundItem(null); setMessage(''); }}
-                            style={{ padding: '10px 12px', backgroundColor: '#fff', color: '#999', border: '1px solid #d0d7e8', borderRadius: '7px', cursor: 'pointer', fontSize: '16px' }}
-                        >
-                            ✕
-                        </button>
-                    )}
-                    <button
-                        onClick={handleSearch}
-                        style={{ padding: '10px 16px', backgroundColor: '#4a78c4', color: '#fff', border: 'none', borderRadius: '7px', cursor: 'pointer' }}
-                    >
-                        查詢
-                    </button>
-                </div>
-            </div>
-
-            {/* 相機掃碼按鈕 / 相機畫面 */}
-            {!scanning ? (
+            {/* ===== ヘッダー ===== */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+                <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>掃碼入庫</h2>
                 <button
-                    onClick={startScan}
+                    onClick={() => setPanelMode(panelMode === 'scan' ? 'batch' : 'scan')}
                     style={{
-                        width: '100%', padding: '10px', marginBottom: '16px',
-                        backgroundColor: '#fff', color: '#4a78c4',
-                        border: '2px solid #4a78c4', borderRadius: '7px',
-                        cursor: 'pointer', fontSize: '14px', fontWeight: 600
+                        padding: '6px 14px', borderRadius: '7px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                        border: `2px solid ${panelMode === 'batch' ? '#2980b9' : '#d0d7e8'}`,
+                        backgroundColor: panelMode === 'batch' ? '#eaf3fb' : '#fff',
+                        color: panelMode === 'batch' ? '#2980b9' : '#5a6480',
                     }}
                 >
-                    📷 開啟相機掃碼
+                    📦 批次入庫
                 </button>
-            ) : (
-                <div style={{ marginBottom: '16px' }}>
-                    {/* 相機 viewfinder：video + 紅線疊層 */}
-                    <div style={{ position: 'relative', width: '100%', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#000' }}>
-                        <video
-                            ref={videoRef}
-                            style={{ width: '100%', display: 'block' }}
-                        />
-                        {/* 紅線：位置在畫面垂直中央 */}
-                        <div style={{
-                            position: 'absolute',
-                            top: '50%',
-                            left: '10%',
-                            right: '10%',
-                            height: '2px',
-                            backgroundColor: '#e74c3c',
-                            boxShadow: '0 0 6px rgba(231, 76, 60, 0.8)',
-                            transform: 'translateY(-50%)',
-                            pointerEvents: 'none'
-                        }} />
-                    </div>
-                    <button
-                        onClick={stopScan}
-                        style={{
-                            width: '100%', padding: '10px', marginTop: '8px',
-                            backgroundColor: '#fff', color: '#e74c3c',
-                            border: '2px solid #e74c3c', borderRadius: '7px',
-                            cursor: 'pointer', fontSize: '14px'
-                        }}
-                    >
-                        取消掃碼
-                    </button>
+            </div>
+
+            {/* ===== 批次入庫モード（佔位） ===== */}
+            {panelMode === 'batch' && (
+                <div style={{ textAlign: 'center', padding: '48px 24px', backgroundColor: '#f0f3f8', borderRadius: '10px', color: '#96a0b8', fontSize: '13px' }}>
+                    <div style={{ fontSize: '32px', marginBottom: '12px' }}>🚧</div>
+                    視情況增加新功能！
                 </div>
             )}
 
-            {foundItem && (
-                <div style={{ backgroundColor: '#f0f4ff', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
-                    <div style={{ fontWeight: 600, marginBottom: '4px' }}>{foundItem.product.name}</div>
-                    <div style={{ fontSize: '12px', color: '#5a6480' }}>單位：{foundItem.unit}</div>
-                </div>
-            )}
-
-            {message && (
-                <div style={{
-                    color: message.includes('成功') ? '#27ae60' : '#e74c3c',
-                    fontSize: '13px', marginBottom: '16px'
-                }}>
-                    {message}
-                </div>
-            )}
-
-            {foundItem && (
+            {/* ===== 掃碼入庫モード ===== */}
+            {panelMode === 'scan' && (
                 <>
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                        <button
-                            onClick={() => setTransactionType('in')}
-                            style={{ flex: 1, padding: '10px', borderRadius: '7px', border: `2px solid ${transactionType === 'in' ? '#2ecc71' : '#d0d7e8'}`, backgroundColor: transactionType === 'in' ? '#eafaf1' : '#fff', cursor: 'pointer', fontWeight: 600 }}
-                        >
-                            入庫
-                        </button>
-                        <button
-                            onClick={() => setTransactionType('out')}
-                            style={{ flex: 1, padding: '10px', borderRadius: '7px', border: `2px solid ${transactionType === 'out' ? '#e74c3c' : '#d0d7e8'}`, backgroundColor: transactionType === 'out' ? '#fdf0f0' : '#fff', cursor: 'pointer', fontWeight: 600 }}
-                        >
-                            出庫
-                        </button>
-                    </div>
-
+                    {/* 條碼輸入 */}
                     <div style={{ marginBottom: '16px' }}>
-                        <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#5a6480' }}>數量</label>
-                        <input
-                            type="number"
-                            style={{ width: '100%', padding: '10px 12px', borderRadius: '7px', border: '1px solid #d0d7e8', fontSize: '14px' }}
-                            value={quantity}
-                            onChange={e => setQuantity(e.target.value)}
-                            placeholder="輸入數量"
-                        />
+                        <label style={s.label}>條碼</label>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            <input
+                                style={{ ...s.input, flex: 1 }}
+                                value={barcode}
+                                onChange={e => setBarcode(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                                placeholder="輸入或掃描條碼"
+                            />
+                            {barcode && (
+                                <button
+                                    onClick={() => { setBarcode(''); setMessage(''); }}
+                                    style={{ padding: '10px 12px', backgroundColor: '#fff', color: '#999', border: '1px solid #d0d7e8', borderRadius: '7px', cursor: 'pointer' }}
+                                >✕</button>
+                            )}
+                            <button onClick={handleSearch} style={s.btnPrimary}>查詢</button>
+                        </div>
                     </div>
 
-                    {transactionType === 'in' && (
+                    {/* 相機 */}
+                    {!scanning ? (
+                        <button
+                            onClick={startScan}
+                            style={{ width: '100%', padding: '10px', marginBottom: '16px', backgroundColor: '#fff', color: '#4a78c4', border: '2px solid #4a78c4', borderRadius: '7px', cursor: 'pointer', fontSize: '14px', fontWeight: 600 }}
+                        >
+                            📷 開啟相機掃碼
+                        </button>
+                    ) : (
                         <div style={{ marginBottom: '16px' }}>
-                            <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#5a6480' }}>運送公司</label>
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                                {['ヤマト運輸', '佐川急便', '福山通運'].map(c => (
-                                    <button
-                                        key={c}
-                                        onClick={() => setCarrier(c)}
-                                        style={{
-                                            flex: 1, padding: '8px', borderRadius: '7px',
-                                            border: `2px solid ${carrier === c ? '#4a78c4' : '#d0d7e8'}`,
-                                            backgroundColor: carrier === c ? '#eef2fb' : '#fff',
-                                            cursor: 'pointer', fontSize: '12px', fontWeight: carrier === c ? 600 : 400
-                                        }}
+                            <div style={{ position: 'relative', width: '100%', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#000' }}>
+                                <video ref={videoRef} style={{ width: '100%', display: 'block' }} />
+                                <div style={{ position: 'absolute', top: '50%', left: '10%', right: '10%', height: '2px', backgroundColor: '#e74c3c', boxShadow: '0 0 6px rgba(231,76,60,0.8)', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+                            </div>
+                            <button onClick={stopScan} style={{ width: '100%', padding: '10px', marginTop: '8px', backgroundColor: '#fff', color: '#e74c3c', border: '2px solid #e74c3c', borderRadius: '7px', cursor: 'pointer', fontSize: '14px' }}>
+                                取消掃碼
+                            </button>
+                        </div>
+                    )}
+
+                    {/* 訊息 */}
+                    {message && (
+                        <div style={{ color: message.startsWith('✓') ? '#27ae60' : '#e74c3c', fontSize: '13px', marginBottom: '12px' }}>
+                            {message}
+                        </div>
+                    )}
+
+                    {/* ===== 累積清單 ===== */}
+                    {entries.length > 0 && (
+                        <div style={{ marginBottom: '16px' }}>
+                            <div style={{ fontSize: '12px', color: '#5a6480', fontWeight: 600, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                入庫清單（{entries.length} 筆）
+                            </div>
+                            <div style={{ backgroundColor: '#fff', border: '1px solid #d0d7e8', borderRadius: '8px', overflow: 'hidden' }}>
+                                {entries.map((entry, idx) => (
+                                    <div
+                                        key={entry.item.id}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderBottom: idx < entries.length - 1 ? '1px solid #e8ecf4' : 'none' }}
                                     >
-                                        {c}
-                                    </button>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontWeight: 500, fontSize: '13px' }}>{entry.item.product.name}</div>
+                                            <div style={{ fontSize: '11px', color: '#96a0b8', marginTop: '2px' }}>{entry.item.unit}</div>
+                                        </div>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            value={entry.quantity}
+                                            onChange={e => updateQuantity(entry.item.id, e.target.value)}
+                                            style={{ width: '60px', padding: '5px 8px', border: '1px solid #d0d7e8', borderRadius: '6px', fontSize: '13px', textAlign: 'center', fontFamily: 'monospace' }}
+                                        />
+                                        <span style={{ fontSize: '12px', color: '#96a0b8' }}>{entry.item.unit}</span>
+                                        <button
+                                            onClick={() => removeEntry(entry.item.id)}
+                                            style={{ width: '28px', height: '28px', border: '1px solid #d0d7e8', borderRadius: '6px', backgroundColor: 'transparent', color: '#c0392b', cursor: 'pointer', fontSize: '12px' }}
+                                        >✕</button>
+                                    </div>
                                 ))}
                             </div>
                         </div>
                     )}
 
-                    <button
-                        style={{ width: '100%', padding: '12px', backgroundColor: '#4a78c4', color: '#fff', border: 'none', borderRadius: '7px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
-                        onClick={async () => {
-                            if (!foundItem || !quantity) return;
-                            try {
-                                await axios.post(`${API_URL}/api/inventory/transactions`, {
-                                    itemId: foundItem.id,
-                                    transactionType: transactionType === 'in' ? 'IN' : 'OUT',
-                                    quantity: parseInt(quantity),
-                                    operatedBy: '倉庫人員',
-                                    note: transactionType === 'in' ? carrier : null,
-                                });
-                                setMessage(transactionType === 'in' ? '入庫成功' : '出庫成功');
-                                setFoundItem(null);
-                                setBarcode('');
-                                setQuantity('');
-                                setCarrier('');
-                            } catch (err: any) {
-                                setMessage(err.response?.data || '操作失敗');
-                            }
-                        }}
-                    >
-                        確認{transactionType === 'in' ? '入庫' : '出庫'}
-                    </button>
+                    {/* 運送公司・操作者・送出（清單有內容時才顯示）*/}
+                    {entries.length > 0 && (
+                        <>
+                            {/* 運送公司 */}
+                            <div style={{ marginBottom: '16px' }}>
+                                <label style={s.label}>運送公司</label>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    {['ヤマト運輸', '佐川急便', '福山通運'].map(c => (
+                                        <button key={c} onClick={() => setCarrier(carrier === c ? '' : c)} style={s.btnOutline(carrier === c)}>
+                                            {c}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* 操作者 */}
+                            <div style={{ marginBottom: '16px' }}>
+                                <label style={s.label}>操作者</label>
+                                <input
+                                    style={s.input}
+                                    placeholder="姓名"
+                                    value={operator}
+                                    onChange={e => setOperator(e.target.value)}
+                                />
+                            </div>
+
+                            {/* 送出 */}
+                            <button
+                                onClick={handleSubmit}
+                                disabled={isSubmitting}
+                                style={{ ...s.btnPrimary, width: '100%', padding: '12px', fontSize: '14px', opacity: isSubmitting ? 0.7 : 1 }}
+                            >
+                                {isSubmitting ? '送出中…' : `確認入庫（${entries.length} 筆）`}
+                            </button>
+                        </>
+                    )}
                 </>
             )}
         </div>

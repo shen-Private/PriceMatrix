@@ -15,7 +15,7 @@ function Header() {
     { label: '折扣管理',   path: '/pricing',           action: 'view_pricing'   as const },
     { label: '庫存總覽',   path: '/inventory',         action: 'view_inventory' as const },
     { label: '掃碼入出庫', path: '/inventory/scan',    action: 'scan_inventory' as const },
-    { label: '入出庫歷史', path: '/inventory/history', action: 'view_inventory' as const },
+    // { label: '入出庫歷史', path: '/inventory/history', action: 'view_inventory' as const },
   ];
 
   const visibleLinks = allLinks.filter(l => can(l.action));

@@ -3,7 +3,7 @@ import axios from 'axios';
 import styles from './InventoryPanel.module.css';
 import React from 'react';
 import { useAuth } from '../../AuthContext';
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 axios.defaults.withCredentials = true;
 // ===== 型別定義 =====
 interface Category {
@@ -15,6 +15,7 @@ interface Product {
   id: number;
   name: string;
   category: Category;
+  manufacturer: { id: number; name: string } | null;
 }
 
 type StockType = 'internal' | 'outsource_infinite' | 'outsource_warehouse' | 'outsource_dropship';
@@ -55,6 +56,23 @@ interface Toast {
   type: 'success' | 'error';
 }
 
+interface RecentTransaction {
+  id: number;
+  transactionType: string;
+  quantity: number;
+  quantityBefore: number;
+  quantityAfter: number;
+  operatedBy: string;
+  operatedAt: string;
+  batchId: string | null;
+  note: string | null;
+  item: {
+    id: number;
+    product: { id: number; name: string; category: { id: number; name: string } };
+    unit: string;
+  };
+}
+
 // ===== 常數 =====
 const STOCK_TYPE_LABEL: Record<StockType, string> = {
   internal: '自社庫存',
@@ -75,6 +93,8 @@ function InventoryPanel() {
   const [items, setItems] = useState<ItemWithStock[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [filterType, setFilterType] = useState<StockType | ''>('');
+  const [filterManufacturer, setFilterManufacturer] = useState<number | null>(null);
+  const [manufacturers, setManufacturers] = useState<{ id: number; name: string }[]>([]);
   const { can } = useAuth();
   const canSetSafetyStock = can('set_safety_stock');
 
@@ -92,21 +112,33 @@ function InventoryPanel() {
   const [toast, setToast] = useState<Toast | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ===== 模式切換：overview / stocktake / batchIn =====
-  type PanelMode = 'overview' | 'stocktake' | 'batchIn';
+  // ===== 模式切換：overview / stocktake =====
+  type PanelMode = 'overview' | 'stocktake';
   const [mode, setMode] = useState<PanelMode>('overview');
 
+  const switchMode = (next: PanelMode) => {
+    setMode(next);
+    if (next === 'stocktake') loadRecentTransactions();
+  };
+
   // ===== 盤點模式 =====
-  // key: item.id, value: 輸入的實際數量（字串）
   const [stocktakeValues, setStocktakeValues] = useState<Record<number, string>>({});
   const [stocktakeOperator, setStocktakeOperator] = useState('');
   const [isSubmittingStocktake, setIsSubmittingStocktake] = useState(false);
 
-  // ===== 批次入庫 =====
-  // key: item.id, value: 輸入的入庫數量（字串）
-  const [batchValues, setBatchValues] = useState<Record<number, string>>({});
-  const [batchOperator, setBatchOperator] = useState('');
-  const [isSubmittingBatch, setIsSubmittingBatch] = useState(false);
+  // ===== 最近入庫記錄（盤點 sidebar 用）=====
+  const [recentTransactions, setRecentTransactions] = useState<RecentTransaction[]>([]);
+
+  const loadRecentTransactions = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/inventory/transactions/recent?days=7&limit=10`);
+      setRecentTransactions(res.data);
+    } catch {
+      // サイレント失敗
+    }
+  };
+
+
 
   const showToast = (message: string, type: Toast['type'] = 'success') => {
     setToast({ message, type });
@@ -131,6 +163,12 @@ function InventoryPanel() {
     loadItems();
   }, []);
 
+  const loadManufacturers = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/manufacturers`);
+      setManufacturers(res.data);
+    } catch { }
+  };
   // ===== 新增廠商情報 =====
   const handleAddInquiry = async (itemId: number) => {
     try {
@@ -215,37 +253,14 @@ function InventoryPanel() {
     }
   };
 
-  // ===== 批次入庫提交 =====
-  const handleSubmitBatchIn = async () => {
-    if (!batchOperator.trim()) { showToast('請輸入操作者姓名', 'error'); return; }
-    const entries = Object.entries(batchValues).filter(([, v]) => v !== '' && parseInt(v) > 0);
-    if (entries.length === 0) { showToast('尚未輸入任何入庫數量', 'error'); return; }
-    setIsSubmittingBatch(true);
-    try {
-      await axios.post(`${API_URL}/api/inventory/transactions/batch`, {
-        operatedBy: batchOperator,
-        items: entries.map(([itemId, qty]) => ({
-          itemId: parseInt(itemId),
-          quantity: parseInt(qty),
-          note: null,
-        })),
-      });
-      showToast(`批次入庫完成，共 ${entries.length} 筆`);
-      setBatchValues({});
-      setBatchOperator('');
-      setMode('overview');
-      loadItems();
-    } catch (err) {
-      showToast('批次入庫失敗', 'error');
-    } finally {
-      setIsSubmittingBatch(false);
-    }
-  };
+
 
   // ===== 過濾 =====
-  const filteredItems = filterType
-    ? items.filter(i => i.item.stockType === filterType)
-    : items;
+  const filteredItems = items.filter(i => {
+    if (filterType && i.item.stockType !== filterType) return false;
+    if (filterManufacturer && i.item.product?.manufacturer?.id !== filterManufacturer) return false;
+    return true;
+  });
 
   // ===== 庫存狀態顯示 =====
   const renderStockStatus = (row: ItemWithStock) => {
@@ -295,16 +310,9 @@ function InventoryPanel() {
           <button
             className={styles.btnSearch}
             style={{ width: 'auto', padding: '6px 14px', backgroundColor: mode === 'stocktake' ? '#e67e22' : undefined, borderColor: mode === 'stocktake' ? '#e67e22' : undefined }}
-            onClick={() => setMode(mode === 'stocktake' ? 'overview' : 'stocktake')}
+            onClick={() => switchMode(mode === 'stocktake' ? 'overview' : 'stocktake')}
           >
             📋 盤點模式
-          </button>
-          <button
-            className={styles.btnSearch}
-            style={{ width: 'auto', padding: '6px 14px', backgroundColor: mode === 'batchIn' ? '#2980b9' : undefined, borderColor: mode === 'batchIn' ? '#2980b9' : undefined }}
-            onClick={() => setMode(mode === 'batchIn' ? 'overview' : 'batchIn')}
-          >
-            📦 批次入庫
           </button>
           <button
             className={styles.btnSearch}
@@ -318,85 +326,143 @@ function InventoryPanel() {
 
       <div className={styles.layout}>
         <aside className={styles.sidebar}>
-          <div>
-            <div className={styles.sectionLabel}>篩選條件</div>
 
-            {/* 全部 */}
-            <div
-              className={styles.statItem}
-              onClick={() => setFilterType('')}
-              style={{
-                cursor: 'pointer',
-                backgroundColor: filterType === '' ? '#5a6480' + '22' : undefined,
-                border: filterType === '' ? '1.5px solid #5a6480' : '1.5px solid transparent',
-                borderRadius: '8px',
-                padding: '8px 10px',
-                marginBottom: '6px',
-                transition: 'all 0.15s',
-              }}
-            >
-              <span
-                className={styles.filterDot}
-                style={{ backgroundColor: '#5a6480' }}
-              />
-              <span
-                className={styles.statLabel}
+          {/* ===== 盤點模式：最近入庫記錄 ===== */}
+          {mode === 'stocktake' && (
+            <div>
+              <div className={styles.sectionLabel}>最近入庫（7天）</div>
+              {recentTransactions.length === 0 ? (
+                <div style={{ fontSize: '12px', color: '#96a0b8', padding: '8px 0' }}>尚無記錄</div>
+              ) : (
+                recentTransactions.map(tx => {
+                  const isAdjust = tx.transactionType === 'ADJUST';
+                  const sign = tx.quantity >= 0 ? '+' : '';
+                  const color = tx.quantity > 0 ? '#27ae60' : tx.quantity < 0 ? '#e74c3c' : '#96a0b8';
+                  const date = new Date(tx.operatedAt).toLocaleDateString('ja-JP');
+                  return (
+                    <div key={tx.id} style={{ padding: '8px 10px', borderRadius: '7px', border: '1px solid #d0d7e8', backgroundColor: '#f8f9fd', marginBottom: '6px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '13px', fontWeight: 500, color: '#1e2740' }}>{tx.item.product.name}</span>
+                        <span style={{ fontSize: '13px', fontWeight: 600, color, fontFamily: 'monospace' }}>
+                          {isAdjust ? `${sign}${tx.quantity}` : `+${tx.quantity}`} {tx.item.unit}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+                        <span style={{ fontSize: '11px', color: '#96a0b8' }}>{date}</span>
+                        <span style={{ fontSize: '11px', color: '#96a0b8' }}>
+                          {isAdjust ? '盤點' : (tx.batchId ? '批次' : '入庫')}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {/* ===== 通常模式：篩選條件 ===== */}
+          {mode === 'overview' && (
+            <div>
+              <div className={styles.sectionLabel}>篩選條件</div>
+
+              {/* 全部 */}
+              <div
+                className={styles.statItem}
+                onClick={() => setFilterType('')}
                 style={{
-                  fontWeight: filterType === '' ? 600 : undefined,
-                  color: filterType === '' ? '#5a6480' : undefined,
+                  cursor: 'pointer',
+                  backgroundColor: filterType === '' ? '#5a6480' + '22' : undefined,
+                  border: filterType === '' ? '1.5px solid #5a6480' : '1.5px solid transparent',
+                  borderRadius: '8px',
+                  padding: '8px 10px',
+                  marginBottom: '6px',
+                  transition: 'all 0.15s',
                 }}
               >
-                全部
-              </span>
-            </div>
+                <span
+                  className={styles.filterDot}
+                  style={{ backgroundColor: '#5a6480' }}
+                />
+                <span
+                  className={styles.statLabel}
+                  style={{
+                    fontWeight: filterType === '' ? 600 : undefined,
+                    color: filterType === '' ? '#5a6480' : undefined,
+                  }}
+                >
+                  全部
+                </span>
+              </div>
 
-            {(Object.keys(STOCK_TYPE_LABEL) as StockType[]).map(k => {
-              const isSelected = filterType === k;
-              return (
+              {(Object.keys(STOCK_TYPE_LABEL) as StockType[]).map(k => {
+                const isSelected = filterType === k;
+                return (
+                  <div
+                    key={k}
+                    className={styles.statItem}
+                    onClick={() => setFilterType(isSelected ? '' : k as StockType)}
+                    style={{
+                      cursor: 'pointer',
+                      backgroundColor: isSelected ? STOCK_TYPE_COLOR[k] + '22' : undefined,
+                      border: isSelected ? `1.5px solid ${STOCK_TYPE_COLOR[k]}` : '1.5px solid transparent',
+                      borderRadius: '8px',
+                      padding: '8px 10px',
+                      marginBottom: '6px',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <span
+                      className={styles.filterDot}
+                      style={{ backgroundColor: STOCK_TYPE_COLOR[k] }}
+                    />
+                    <span
+                      className={styles.statLabel}
+                      style={{
+                        fontWeight: isSelected ? 600 : undefined,
+                        color: isSelected ? STOCK_TYPE_COLOR[k] : undefined,
+                      }}
+                    >
+                      {STOCK_TYPE_LABEL[k]}
+                    </span>
+                  </div>
+                );
+              })}
+              <div className={styles.sectionLabel} style={{ marginTop: '16px' }}>廠商</div>
+              {manufacturers.map(m => (
                 <div
-                  key={k}
+                  key={m.id}
                   className={styles.statItem}
-                  onClick={() => setFilterType(isSelected ? '' : k as StockType)}
+                  onClick={() => setFilterManufacturer(filterManufacturer === m.id ? null : m.id)}
                   style={{
                     cursor: 'pointer',
-                    backgroundColor: isSelected ? STOCK_TYPE_COLOR[k] + '22' : undefined,
-                    border: isSelected ? `1.5px solid ${STOCK_TYPE_COLOR[k]}` : '1.5px solid transparent',
+                    backgroundColor: filterManufacturer === m.id ? '#5a648022' : undefined,
+                    border: filterManufacturer === m.id ? '1.5px solid #5a6480' : '1.5px solid transparent',
                     borderRadius: '8px',
                     padding: '8px 10px',
                     marginBottom: '6px',
                     transition: 'all 0.15s',
                   }}
                 >
-                  <span
-                    className={styles.filterDot}
-                    style={{ backgroundColor: STOCK_TYPE_COLOR[k] }}
-                  />
-                  <span
-                    className={styles.statLabel}
-                    style={{
-                      fontWeight: isSelected ? 600 : undefined,
-                      color: isSelected ? STOCK_TYPE_COLOR[k] : undefined,
-                    }}
-                  >
-                    {STOCK_TYPE_LABEL[k]}
+                  <span className={styles.statLabel}
+                    style={{ fontWeight: filterManufacturer === m.id ? 600 : undefined }}>
+                    {m.name}
                   </span>
                 </div>
-              );
-            })}
-
-            <button
-              className={styles.btnSearch}
-              onClick={() => {
-                if (window.confirm('重新從伺服器載入資料？')) {
-                  loadItems();
-                }
-              }}
-              disabled={isLoading}
-              style={{ marginTop: '12px' }}
-            >
-              {isLoading ? '載入中…' : '重新整理'}
-            </button>
-          </div>
+              ))}
+              <button
+                className={styles.btnSearch}
+                onClick={() => {
+                  if (window.confirm('重新從伺服器載入資料？')) {
+                    loadItems();
+                  }
+                }}
+                disabled={isLoading}
+                style={{ marginTop: '12px' }}
+              >
+                {isLoading ? '載入中…' : '重新整理'}
+              </button>
+            </div>
+          )}
         </aside>
 
         <main className={styles.main}>
@@ -488,291 +554,216 @@ function InventoryPanel() {
             </div>
           )}
 
-          {/* ===== 批次入庫模式 ===== */}
-          {mode === 'batchIn' && (
-            <div>
-              <div className={styles.mainTitle}>📦 批次入庫</div>
-              <div className={styles.mainSubtitle}>
-                一次輸入多筆商品入庫數量，系統統一送出並產生相同 batchId。
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '16px 0' }}>
-                <label style={{ fontSize: '13px', color: '#5a6480', whiteSpace: 'nowrap' }}>操作者</label>
-                <input
-                  className={styles.formInput}
-                  style={{ width: '160px' }}
-                  placeholder="姓名"
-                  value={batchOperator}
-                  onChange={e => setBatchOperator(e.target.value)}
-                />
-              </div>
-              <div className={styles.tableWrap}>
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th className={styles.th}>商品</th>
-                      <th className={styles.th}>分類</th>
-                      <th className={styles.th}>目前庫存</th>
-                      <th className={styles.th}>入庫數量</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items
-                      .filter(r => r.item.stockType === 'internal' || r.item.stockType === 'outsource_warehouse')
-                      .map((row, idx, arr) => {
-                        const { item, stock } = row;
-                        const current = stock?.quantity ?? 0;
-                        const inputVal = batchValues[item.id] ?? '';
-                        const isLast = idx === arr.length - 1;
-                        const tdClass = isLast ? styles.tdLast : styles.td;
-                        return (
-                          <tr key={item.id}>
-                            <td className={tdClass}>{item.product.name}</td>
-                            <td className={tdClass}><span className={styles.badge}>{item.product.category.name}</span></td>
-                            <td className={tdClass}>{current} {item.unit}</td>
-                            <td className={tdClass}>
-                              <input
-                                type="number"
-                                min="0"
-                                className={styles.safetyInput}
-                                placeholder="—"
-                                value={inputVal}
-                                onChange={e => setBatchValues(prev => ({ ...prev, [item.id]: e.target.value }))}
-                              />
-                              <span style={{ marginLeft: '4px', fontSize: '12px', color: '#96a0b8' }}>{item.unit}</span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                  </tbody>
-                </table>
-              </div>
-              <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-                <button
-                  className={styles.btnConfirm}
-                  onClick={handleSubmitBatchIn}
-                  disabled={isSubmittingBatch}
-                >
-                  {isSubmittingBatch ? '送出中…' : '確認批次入庫'}
-                </button>
-                <button
-                  className={styles.btnConfirm}
-                  style={{ backgroundColor: 'transparent', color: '#5a6480', boxShadow: 'none', border: '1px solid #d0d7e8' }}
-                  onClick={() => { setMode('overview'); setBatchValues({}); setBatchOperator(''); }}
-                >
-                  取消
-                </button>
-              </div>
-            </div>
-          )}
+
 
           {/* ===== 庫存總覽（預設） ===== */}
           {mode === 'overview' && (<div>
-          <div>
-            <div className={styles.mainTitle}>庫存總覽</div>
-            <div className={styles.mainSubtitle}>
-              ⚠ 委外直送數量為廠商告知的參考值，需電話確認
+            <div>
+              <div className={styles.mainTitle}>庫存總覽</div>
+              <div className={styles.mainSubtitle}>
+                ⚠ 委外直送數量為廠商告知的參考值，需電話確認
+              </div>
             </div>
-          </div>
 
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th className={styles.th}>商品</th>
-                  <th className={styles.th}>分類</th>
-                  <th className={styles.th}>形態</th>
-                  <th className={styles.th}>庫存狀況</th>
-                  {canSetSafetyStock && <th className={styles.th}>安全庫存</th>}
-                  <th className={styles.th}>操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredItems.length === 0 && (
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead>
                   <tr>
-                    <td colSpan={colSpan} className={styles.td} style={{ textAlign: 'center', color: '#96a0b8', padding: '32px' }}>
-                      {isLoading ? '載入中…' : '無資料'}
-                    </td>
+                    <th className={styles.th}>商品</th>
+                    <th className={styles.th}>分類</th>
+                    <th className={styles.th}>形態</th>
+                    <th className={styles.th}>庫存狀況</th>
+                    {canSetSafetyStock && <th className={styles.th}>安全庫存</th>}
+                    <th className={styles.th}>操作</th>
                   </tr>
-                )}
+                </thead>
+                <tbody>
+                  {filteredItems.length === 0 && (
+                    <tr>
+                      <td colSpan={colSpan} className={styles.td} style={{ textAlign: 'center', color: '#96a0b8', padding: '32px' }}>
+                        {isLoading ? '載入中…' : '無資料'}
+                      </td>
+                    </tr>
+                  )}
 
-                {filteredItems.map((row, idx) => {
-                  const { item } = row;
-                  const isLast = idx === filteredItems.length - 1;
-                  const tdClass = isLast ? styles.tdLast : styles.td;
-                  const isDropship = item.stockType === 'outsource_dropship';
-                  const isExpanded = expandedInquiry === item.id;
-                  const isEditingSafety = editingSafetyId === item.id;
-                  const isSavingSafety = savingSafetyId === item.id;
+                  {filteredItems.map((row, idx) => {
+                    const { item } = row;
+                    const isLast = idx === filteredItems.length - 1;
+                    const tdClass = isLast ? styles.tdLast : styles.td;
+                    const isDropship = item.stockType === 'outsource_dropship';
+                    const isExpanded = expandedInquiry === item.id;
+                    const isEditingSafety = editingSafetyId === item.id;
+                    const isSavingSafety = savingSafetyId === item.id;
 
-                  return (
-                    <React.Fragment key={item.id}>
+                    return (
+                      <React.Fragment key={item.id}>
 
-                      <tr style={{ backgroundColor: isExpanded ? '#f8f9fd' : 'transparent' }}>
-                        <td className={tdClass}>
-                          <div style={{ fontWeight: 500 }}>{item.product.name}</div>
-                        </td>
-                        <td className={tdClass}>
-                          <span className={styles.badge}>{item.product.category.name}</span>
-                        </td>
-                        <td className={tdClass}>
-                          {/* 形態バッジ：色は動的なので inline style を保持 */}
-                          <span style={{
-                            display: 'inline-flex', alignItems: 'center', gap: '5px',
-                            fontSize: '12px', color: STOCK_TYPE_COLOR[item.stockType]
-                          }}>
-                            <span style={{
-                              width: '8px', height: '8px', borderRadius: '50%',
-                              backgroundColor: STOCK_TYPE_COLOR[item.stockType]
-                            }} />
-                            {STOCK_TYPE_LABEL[item.stockType]}
-                          </span>
-                        </td>
-                        <td className={tdClass}>
-                          {renderStockStatus(row)}
-                        </td>
-                        {canSetSafetyStock && (
+                        <tr style={{ backgroundColor: isExpanded ? '#f8f9fd' : 'transparent' }}>
                           <td className={tdClass}>
-                            {(item.stockType === 'internal' || item.stockType === 'outsource_warehouse') ? (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                {isEditingSafety ? (
-                                  <>
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      value={editingSafetyValue}
-                                      onChange={e => setEditingSafetyValue(e.target.value)}
-                                      onKeyDown={e => {
-                                        if (e.key === 'Enter') handleSaveSafety(item);
-                                        if (e.key === 'Escape') setEditingSafetyId(null);
-                                      }}
-                                      autoFocus
-                                      className={styles.safetyInput}
-                                    />
-                                    <span className={styles.safetyUnit}>{item.unit}</span>
-                                    <button className={styles.btnConfirm} onClick={() => handleSaveSafety(item)}>確認</button>
-                                    <button
-                                      className={styles.btnIcon}
-                                      style={{ color: '#c0392b', borderColor: '#e8b4b0' }}
-                                      onClick={() => setEditingSafetyId(null)}
-                                    >✕</button>
-                                  </>
-                                ) : (
-                                  <span
-                                    onClick={() => startEditSafety(item)}
-                                    title="點擊設定安全庫存下限"
-                                    className={item.safetyStock !== null ? styles.safetyDisplay : styles.safetyDisplayEmpty}
-                                  >
-                                    {isSavingSafety ? '…' : item.safetyStock !== null ? `${item.safetyStock} ${item.unit}` : '— 點擊設定'}
-                                    {!isSavingSafety && <span className={styles.safetyEditIcon}>✎</span>}
-                                  </span>
-                                )}
-                              </div>
-                            ) : (
-                              <span className={styles.safetyNA}>—</span>
-                            )}
+                            <div style={{ fontWeight: 500 }}>{item.product.name}</div>
                           </td>
-                        )}
-                        <td className={tdClass}>
-                          {isDropship && (
-                            <div style={{ display: 'flex', gap: '6px' }}>
-                              <button
-                                className={styles.btnIcon}
-                                title="新增情報"
-                                onClick={() => setShowInquiryForm(showInquiryForm === item.id ? null : item.id)}
-                              >＋</button>
-                              <button
-                                className={styles.btnIcon}
-                                title="查看歷史"
-                                style={{ color: isExpanded ? '#4a78c4' : undefined }}
-                                onClick={() => handleToggleInquiryHistory(item.id)}
-                              >≡</button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-
-                      {/* 新增廠商情報表單 */}
-                      {isDropship && showInquiryForm === item.id && (
-                        <tr key={`form-${item.id}`}>
-                          <td colSpan={colSpan} className={styles.inquiryFormCell}>
-                            <div className={styles.inquiryFormRow}>
-                              <div className={styles.inquiryFormField}>
-                                <label className={styles.formLabel}>確認者</label>
-                                <input
-                                  className={styles.formInput}
-                                  style={{ width: '100px' }}
-                                  placeholder="姓名"
-                                  value={newInquiry.confirmedBy}
-                                  onChange={e => setNewInquiry({ ...newInquiry, confirmedBy: e.target.value })}
-                                />
-                              </div>
-                              <div className={styles.inquiryFormField}>
-                                <label className={styles.formLabel}>數量（可空白）</label>
-                                <input
-                                  className={styles.formInput}
-                                  style={{ width: '80px' }}
-                                  type="number"
-                                  placeholder="—"
-                                  value={newInquiry.quantity}
-                                  onChange={e => setNewInquiry({ ...newInquiry, quantity: e.target.value })}
-                                />
-                              </div>
-                              <div className={styles.inquiryFormField}>
-                                <label className={styles.formLabel}>備註</label>
-                                <input
-                                  className={styles.formInput}
-                                  style={{ width: '180px' }}
-                                  placeholder="例：月末補貨"
-                                  value={newInquiry.note}
-                                  onChange={e => setNewInquiry({ ...newInquiry, note: e.target.value })}
-                                />
-                              </div>
-                              <div className={styles.inquiryFormActions}>
-                                <button
-                                  className={styles.btnConfirm}
-                                  onClick={() => handleAddInquiry(item.id)}
-                                  disabled={!newInquiry.confirmedBy}
-                                >記錄</button>
-                                <button
-                                  className={styles.btnConfirm}
-                                  style={{ backgroundColor: 'transparent', color: '#5a6480', boxShadow: 'none', border: '1px solid #d0d7e8' }}
-                                  onClick={() => { setShowInquiryForm(null); setNewInquiry({ confirmedBy: '', quantity: '', note: '' }); }}
-                                >取消</button>
-                              </div>
-                            </div>
+                          <td className={tdClass}>
+                            <span className={styles.badge}>{item.product.category.name}</span>
                           </td>
-                        </tr>
-                      )}
-
-                      {/* 廠商情報歷史 */}
-                      {isDropship && isExpanded && (
-                        <tr key={`history-${item.id}`}>
-                          <td colSpan={colSpan} className={styles.inquiryHistoryCell}>
-                            <div className={styles.inquiryHistoryTitle}>廠商情報歷史</div>
-                            {(inquiryHistory[item.id] || []).length === 0 ? (
-                              <div className={styles.inquiryHistoryEmpty}>尚無記錄</div>
-                            ) : (
-                              (inquiryHistory[item.id] || []).map(log => (
-                                <div key={log.id} className={styles.inquiryLogRow}>
-                                  <span className={styles.inquiryLogDate}>{fmt(log.confirmedAt)}</span>
-                                  <span className={styles.inquiryLogName}>{log.confirmedBy}</span>
-                                  <span className={styles.inquiryLogQty}>
-                                    {log.quantity !== null ? `${log.quantity} ${item.unit}` : '不確定'}
-                                  </span>
-                                  {log.note && <span className={styles.inquiryLogNote}>{log.note}</span>}
+                          <td className={tdClass}>
+                            {/* 形態バッジ：色は動的なので inline style を保持 */}
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', gap: '5px',
+                              fontSize: '12px', color: STOCK_TYPE_COLOR[item.stockType]
+                            }}>
+                              <span style={{
+                                width: '8px', height: '8px', borderRadius: '50%',
+                                backgroundColor: STOCK_TYPE_COLOR[item.stockType]
+                              }} />
+                              {STOCK_TYPE_LABEL[item.stockType]}
+                            </span>
+                          </td>
+                          <td className={tdClass}>
+                            {renderStockStatus(row)}
+                          </td>
+                          {canSetSafetyStock && (
+                            <td className={tdClass}>
+                              {(item.stockType === 'internal' || item.stockType === 'outsource_warehouse') ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  {isEditingSafety ? (
+                                    <>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        value={editingSafetyValue}
+                                        onChange={e => setEditingSafetyValue(e.target.value)}
+                                        onKeyDown={e => {
+                                          if (e.key === 'Enter') handleSaveSafety(item);
+                                          if (e.key === 'Escape') setEditingSafetyId(null);
+                                        }}
+                                        autoFocus
+                                        className={styles.safetyInput}
+                                      />
+                                      <span className={styles.safetyUnit}>{item.unit}</span>
+                                      <button className={styles.btnConfirm} onClick={() => handleSaveSafety(item)}>確認</button>
+                                      <button
+                                        className={styles.btnIcon}
+                                        style={{ color: '#c0392b', borderColor: '#e8b4b0' }}
+                                        onClick={() => setEditingSafetyId(null)}
+                                      >✕</button>
+                                    </>
+                                  ) : (
+                                    <span
+                                      onClick={() => startEditSafety(item)}
+                                      title="點擊設定安全庫存下限"
+                                      className={item.safetyStock !== null ? styles.safetyDisplay : styles.safetyDisplayEmpty}
+                                    >
+                                      {isSavingSafety ? '…' : item.safetyStock !== null ? `${item.safetyStock} ${item.unit}` : '— 點擊設定'}
+                                      {!isSavingSafety && <span className={styles.safetyEditIcon}>✎</span>}
+                                    </span>
+                                  )}
                                 </div>
-                              ))
+                              ) : (
+                                <span className={styles.safetyNA}>—</span>
+                              )}
+                            </td>
+                          )}
+                          <td className={tdClass}>
+                            {isDropship && (
+                              <div style={{ display: 'flex', gap: '6px' }}>
+                                <button
+                                  className={styles.btnIcon}
+                                  title="新增情報"
+                                  onClick={() => setShowInquiryForm(showInquiryForm === item.id ? null : item.id)}
+                                >＋</button>
+                                <button
+                                  className={styles.btnIcon}
+                                  title="查看歷史"
+                                  style={{ color: isExpanded ? '#4a78c4' : undefined }}
+                                  onClick={() => handleToggleInquiryHistory(item.id)}
+                                >≡</button>
+                              </div>
                             )}
                           </td>
                         </tr>
-                      )}
 
-                    </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        {/* 新增廠商情報表單 */}
+                        {isDropship && showInquiryForm === item.id && (
+                          <tr key={`form-${item.id}`}>
+                            <td colSpan={colSpan} className={styles.inquiryFormCell}>
+                              <div className={styles.inquiryFormRow}>
+                                <div className={styles.inquiryFormField}>
+                                  <label className={styles.formLabel}>確認者</label>
+                                  <input
+                                    className={styles.formInput}
+                                    style={{ width: '100px' }}
+                                    placeholder="姓名"
+                                    value={newInquiry.confirmedBy}
+                                    onChange={e => setNewInquiry({ ...newInquiry, confirmedBy: e.target.value })}
+                                  />
+                                </div>
+                                <div className={styles.inquiryFormField}>
+                                  <label className={styles.formLabel}>數量（可空白）</label>
+                                  <input
+                                    className={styles.formInput}
+                                    style={{ width: '80px' }}
+                                    type="number"
+                                    placeholder="—"
+                                    value={newInquiry.quantity}
+                                    onChange={e => setNewInquiry({ ...newInquiry, quantity: e.target.value })}
+                                  />
+                                </div>
+                                <div className={styles.inquiryFormField}>
+                                  <label className={styles.formLabel}>備註</label>
+                                  <input
+                                    className={styles.formInput}
+                                    style={{ width: '180px' }}
+                                    placeholder="例：月末補貨"
+                                    value={newInquiry.note}
+                                    onChange={e => setNewInquiry({ ...newInquiry, note: e.target.value })}
+                                  />
+                                </div>
+                                <div className={styles.inquiryFormActions}>
+                                  <button
+                                    className={styles.btnConfirm}
+                                    onClick={() => handleAddInquiry(item.id)}
+                                    disabled={!newInquiry.confirmedBy}
+                                  >記錄</button>
+                                  <button
+                                    className={styles.btnConfirm}
+                                    style={{ backgroundColor: 'transparent', color: '#5a6480', boxShadow: 'none', border: '1px solid #d0d7e8' }}
+                                    onClick={() => { setShowInquiryForm(null); setNewInquiry({ confirmedBy: '', quantity: '', note: '' }); }}
+                                  >取消</button>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+
+                        {/* 廠商情報歷史 */}
+                        {isDropship && isExpanded && (
+                          <tr key={`history-${item.id}`}>
+                            <td colSpan={colSpan} className={styles.inquiryHistoryCell}>
+                              <div className={styles.inquiryHistoryTitle}>廠商情報歷史</div>
+                              {(inquiryHistory[item.id] || []).length === 0 ? (
+                                <div className={styles.inquiryHistoryEmpty}>尚無記錄</div>
+                              ) : (
+                                (inquiryHistory[item.id] || []).map(log => (
+                                  <div key={log.id} className={styles.inquiryLogRow}>
+                                    <span className={styles.inquiryLogDate}>{fmt(log.confirmedAt)}</span>
+                                    <span className={styles.inquiryLogName}>{log.confirmedBy}</span>
+                                    <span className={styles.inquiryLogQty}>
+                                      {log.quantity !== null ? `${log.quantity} ${item.unit}` : '不確定'}
+                                    </span>
+                                    {log.note && <span className={styles.inquiryLogNote}>{log.note}</span>}
+                                  </div>
+                                ))
+                              )}
+                            </td>
+                          </tr>
+                        )}
+
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>)}
         </main>
       </div>

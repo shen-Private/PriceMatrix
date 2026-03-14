@@ -9,7 +9,7 @@ interface User {
     isActive: boolean;
 }
 
-const API = `${process.env.REACT_APP_API_URL}/api/admin/users`;
+const API = `${import.meta.env.VITE_API_URL}/api/admin/users`;
 
 const roleOptions = ["admin", "warehouse", "sales", "cs"];
 

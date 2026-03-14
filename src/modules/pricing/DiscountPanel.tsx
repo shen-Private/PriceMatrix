@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import styles from './DiscountPanel.module.css';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+const API_URL = 'http://localhost:8080';
 
 // ── 型別定義 ──────────────────────────────────────────
 interface Category {

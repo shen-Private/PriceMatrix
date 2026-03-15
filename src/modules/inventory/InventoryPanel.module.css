@@ -675,3 +675,33 @@
   border: 1px solid #c0392b;
   color: #c0392b;
 }
+.categoryTabs {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0 16px;
+  flex-wrap: wrap;
+}
+
+.categoryTab {
+  padding: 5px 14px;
+  border-radius: 20px;
+  border: 1px solid #d0d7e8;
+  background: transparent;
+  color: #5a6480;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.categoryTab:hover {
+  background: #f0f3fa;
+}
+
+.categoryTabActive {
+  padding: 5px 14px;
+  border-radius: 20px;
+  border: 1px solid #4a78c4;
+  background: #4a78c4;
+  color: white;
+  font-size: 13px;
+  cursor: pointer;
+}

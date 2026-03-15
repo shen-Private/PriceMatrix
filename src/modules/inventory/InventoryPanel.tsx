@@ -120,7 +120,7 @@ function InventoryPanel() {
     setMode(next);
     if (next === 'stocktake') loadRecentTransactions();
   };
-
+  const [filterCategory, setFilterCategory] = useState<string>('');
   // ===== 盤點模式 =====
   const [stocktakeValues, setStocktakeValues] = useState<Record<number, string>>({});
   const [stocktakeOperator, setStocktakeOperator] = useState('');
@@ -162,13 +162,11 @@ function InventoryPanel() {
   useEffect(() => {
     loadItems();
   }, []);
-
-  const loadManufacturers = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/api/manufacturers`);
-      setManufacturers(res.data);
-    } catch { }
-  };
+  useEffect(() => {
+    axios.get(`${API_URL}/api/manufacturers`)
+      .then(res => setManufacturers(res.data))
+      .catch(() => { });
+  }, []);
   // ===== 新增廠商情報 =====
   const handleAddInquiry = async (itemId: number) => {
     try {
@@ -259,9 +257,9 @@ function InventoryPanel() {
   const filteredItems = items.filter(i => {
     if (filterType && i.item.stockType !== filterType) return false;
     if (filterManufacturer && i.item.product?.manufacturer?.id !== filterManufacturer) return false;
+    if (filterCategory && i.item.product?.category?.name !== filterCategory) return false;
     return true;
   });
-
   // ===== 庫存狀態顯示 =====
   const renderStockStatus = (row: ItemWithStock) => {
     const { item, stock, latestInquiry } = row;
@@ -428,6 +426,25 @@ function InventoryPanel() {
                 );
               })}
               <div className={styles.sectionLabel} style={{ marginTop: '16px' }}>廠商</div>
+
+              {/* 全部 */}
+              <div
+                className={styles.statItem}
+                onClick={() => setFilterManufacturer(null)}
+                style={{
+                  cursor: 'pointer',
+                  backgroundColor: filterManufacturer === null ? '#5a648022' : undefined,
+                  border: filterManufacturer === null ? '1.5px solid #5a6480' : '1.5px solid transparent',
+                  borderRadius: '8px',
+                  padding: '8px 10px',
+                  marginBottom: '6px',
+                  transition: 'all 0.15s',
+                }}
+              >
+                <span className={styles.statLabel} style={{ fontWeight: filterManufacturer === null ? 600 : undefined }}>
+                  全部
+                </span>
+              </div>
               {manufacturers.map(m => (
                 <div
                   key={m.id}
@@ -454,6 +471,9 @@ function InventoryPanel() {
                 onClick={() => {
                   if (window.confirm('重新從伺服器載入資料？')) {
                     loadItems();
+                    setFilterManufacturer(null);
+                    setFilterCategory('');
+                    setFilterType('');
                   }
                 }}
                 disabled={isLoading}
@@ -490,6 +510,7 @@ function InventoryPanel() {
                     <tr>
                       <th className={styles.th}>商品</th>
                       <th className={styles.th}>分類</th>
+                      <th className={styles.th}>廠商</th>  {/* 加這行 */}
                       <th className={styles.th}>目前庫存</th>
                       <th className={styles.th}>實際數量（盤點）</th>
                       <th className={styles.th}>差異</th>
@@ -510,6 +531,9 @@ function InventoryPanel() {
                           <tr key={item.id}>
                             <td className={tdClass}>{item.product.name}</td>
                             <td className={tdClass}><span className={styles.badge}>{item.product.category.name}</span></td>
+                            <td className={tdClass}>
+                              {item.product.manufacturer?.name ?? '—'}
+                            </td>
                             <td className={tdClass}>{current} {item.unit}</td>
                             <td className={tdClass}>
                               <input
@@ -564,13 +588,27 @@ function InventoryPanel() {
                 ⚠ 委外直送數量為廠商告知的參考值，需電話確認
               </div>
             </div>
-
+            {/* 分類 Tab */}
+            <div className={styles.categoryTabs}>
+              <button
+                className={filterCategory === '' ? styles.categoryTabActive : styles.categoryTab}
+                onClick={() => setFilterCategory('')}
+              >全部</button>
+              {[...new Set(items.map(i => i.item.product?.category?.name).filter(Boolean))].map(cat => (
+                <button
+                  key={cat}
+                  className={filterCategory === cat ? styles.categoryTabActive : styles.categoryTab}
+                  onClick={() => setFilterCategory(cat!)}
+                >{cat}</button>
+              ))}
+            </div>
             <div className={styles.tableWrap}>
               <table className={styles.table}>
                 <thead>
                   <tr>
                     <th className={styles.th}>商品</th>
                     <th className={styles.th}>分類</th>
+                    <th className={styles.th}>廠商</th>  {/* 加這行 */}
                     <th className={styles.th}>形態</th>
                     <th className={styles.th}>庫存狀況</th>
                     {canSetSafetyStock && <th className={styles.th}>安全庫存</th>}
@@ -604,6 +642,9 @@ function InventoryPanel() {
                           </td>
                           <td className={tdClass}>
                             <span className={styles.badge}>{item.product.category.name}</span>
+                          </td>
+                          <td className={tdClass}>
+                            {item.product.manufacturer?.name ?? '—'}
                           </td>
                           <td className={tdClass}>
                             {/* 形態バッジ：色は動的なので inline style を保持 */}

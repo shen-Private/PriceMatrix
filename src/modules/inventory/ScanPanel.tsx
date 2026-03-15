@@ -44,6 +44,13 @@ function ScanPanel() {
     const [operator, setOperator] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // ===== 簡易建檔表單 =====
+    const [showQuickAdd, setShowQuickAdd] = useState(false);
+    const [quickAddBarcode, setQuickAddBarcode] = useState('');
+    const [quickAddName, setQuickAddName] = useState('');
+    const [quickAddManufacturerId, setQuickAddManufacturerId] = useState<number | null>(null);
+    const [manufacturers, setManufacturers] = useState<{ id: number; name: string }[]>([]);
+
     // ===== 相機操作 =====
     const stopScan = () => {
         if (controlsRef.current) {
@@ -100,7 +107,9 @@ function ScanPanel() {
     useEffect(() => {
         return () => { stopScan(); };
     }, []);
-
+    useEffect(() => {
+        axios.get(`${API_URL}/api/manufacturers`).then(r => setManufacturers(r.data));
+    }, []);
     // ===== 條碼查詢 → 加入清單 =====
     const searchByBarcode = async (code: string) => {
         if (!code.trim()) return;
@@ -123,7 +132,11 @@ function ScanPanel() {
                 return [...prev, { item: foundItem, quantity: 1 }];
             });
         } catch {
-            setMessage('找不到此條碼的商品');
+            setQuickAddBarcode(code);
+            setQuickAddName('');
+            setQuickAddManufacturerId(null);
+            setShowQuickAdd(true);
+            setMessage('');
         }
     };
 
@@ -168,7 +181,19 @@ function ScanPanel() {
             setIsSubmitting(false);
         }
     };
-
+    const handleQuickAdd = async () => {
+        if (!quickAddName.trim()) { setMessage('請輸入商品名稱'); return; }
+        try {
+            const params = new URLSearchParams({ name: quickAddName });
+            if (quickAddManufacturerId) params.append('manufacturerId', String(quickAddManufacturerId));
+            await axios.post(`${API_URL}/api/products/pending?${params}`);
+            setMessage('✓ 已暫時建檔，待CS確認');
+            setShowQuickAdd(false);
+            setBarcode('');
+        } catch {
+            setMessage('建檔失敗');
+        }
+    };
     // ===== 共用樣式 =====
     const s = {
         wrap: { padding: '24px', maxWidth: '520px', margin: '0 auto', fontFamily: "'IBM Plex Sans JP', 'Noto Sans TC', sans-serif", fontSize: '14px', color: '#1e2740' } as React.CSSProperties,
@@ -255,7 +280,30 @@ function ScanPanel() {
                             {message}
                         </div>
                     )}
-
+                    {/* 簡易建檔表單 */}
+                    {showQuickAdd && (
+                        <div style={{ backgroundColor: '#fffbea', border: '1px solid #f0c040', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
+                            <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '12px', color: '#7a5c00' }}>
+                                ⚠ 找不到此條碼，是否暫時建檔？
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#96a0b8', marginBottom: '8px' }}>條碼：{quickAddBarcode}</div>
+                            <div style={{ marginBottom: '10px' }}>
+                                <label style={s.label}>商品名稱</label>
+                                <input style={s.input} value={quickAddName} onChange={e => setQuickAddName(e.target.value)} placeholder="從外箱確認後輸入" />
+                            </div>
+                            <div style={{ marginBottom: '12px' }}>
+                                <label style={s.label}>廠商</label>
+                                <select style={{ ...s.input }} value={quickAddManufacturerId ?? ''} onChange={e => setQuickAddManufacturerId(e.target.value ? Number(e.target.value) : null)}>
+                                    <option value="">不確定</option>
+                                    {manufacturers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                </select>
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <button onClick={() => setShowQuickAdd(false)} style={{ ...s.btnOutline(false), flex: 1 }}>取消</button>
+                                <button onClick={handleQuickAdd} style={{ ...s.btnPrimary, flex: 1 }}>暫時建檔</button>
+                            </div>
+                        </div>
+                    )}
                     {/* ===== 累積清單 ===== */}
                     {entries.length > 0 && (
                         <div style={{ marginBottom: '16px' }}>

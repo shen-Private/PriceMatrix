@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://pricematrix-backend-i065.onrender.com/api/:path*"
+    }
+  ]
+}

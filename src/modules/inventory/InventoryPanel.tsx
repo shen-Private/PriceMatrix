@@ -510,7 +510,7 @@ function InventoryPanel() {
                     <tr>
                       <th className={styles.th}>商品</th>
                       <th className={styles.th}>分類</th>
-                      <th className={styles.th}>廠商</th>  {/* 加這行 */}
+                      <th className={styles.th}>廠商</th>
                       <th className={styles.th}>目前庫存</th>
                       <th className={styles.th}>實際數量（盤點）</th>
                       <th className={styles.th}>差異</th>
@@ -530,7 +530,7 @@ function InventoryPanel() {
                         return (
                           <tr key={item.id}>
                             <td className={tdClass}>{item.product.name}</td>
-                            <td className={tdClass}><span className={styles.badge}>{item.product.category.name}</span></td>
+                            <td className={tdClass}><span className={styles.badge}>{item.product.category?.name ?? '—'}</span></td>
                             <td className={tdClass}>
                               {item.product.manufacturer?.name ?? '—'}
                             </td>
@@ -608,7 +608,7 @@ function InventoryPanel() {
                   <tr>
                     <th className={styles.th}>商品</th>
                     <th className={styles.th}>分類</th>
-                    <th className={styles.th}>廠商</th>  {/* 加這行 */}
+                    <th className={styles.th}>廠商</th>
                     <th className={styles.th}>形態</th>
                     <th className={styles.th}>庫存狀況</th>
                     {canSetSafetyStock && <th className={styles.th}>安全庫存</th>}
@@ -635,13 +635,12 @@ function InventoryPanel() {
 
                     return (
                       <React.Fragment key={item.id}>
-
                         <tr style={{ backgroundColor: isExpanded ? '#f8f9fd' : 'transparent' }}>
                           <td className={tdClass}>
                             <div style={{ fontWeight: 500 }}>{item.product.name}</div>
                           </td>
                           <td className={tdClass}>
-                            <span className={styles.badge}>{item.product.category.name}</span>
+                            <span className={styles.badge}>{item.product.category?.name ?? '—'}</span>
                           </td>
                           <td className={tdClass}>
                             {item.product.manufacturer?.name ?? '—'}

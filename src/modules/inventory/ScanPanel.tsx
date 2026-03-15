@@ -184,9 +184,19 @@ function ScanPanel() {
     const handleQuickAdd = async () => {
         if (!quickAddName.trim()) { setMessage('請輸入商品名稱'); return; }
         try {
+            // Step 1：建 pending product
             const params = new URLSearchParams({ name: quickAddName });
             if (quickAddManufacturerId) params.append('manufacturerId', String(quickAddManufacturerId));
-            await axios.post(`${API_URL}/api/products/pending?${params}`);
+            const productRes = await axios.post(`${API_URL}/api/products/pending?${params}`);
+            const productId = productRes.data.id;
+
+            // Step 2：建 inventory_item（含 barcode）
+            const itemParams = new URLSearchParams({
+                productId: String(productId),
+                barcode: quickAddBarcode
+            });
+            await axios.post(`${API_URL}/api/inventory/items/pending?${itemParams}`);
+
             setMessage('✓ 已暫時建檔，待CS確認');
             setShowQuickAdd(false);
             setBarcode('');

@@ -3,7 +3,7 @@ import axios from 'axios';
 import styles from './InventoryPanel.module.css';
 import React from 'react';
 import { useAuth } from '../../AuthContext';
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API_URL = import.meta.env.VITE_API_URL ?? '';
 axios.defaults.withCredentials = true;
 // ===== 型別定義 =====
 interface Category {

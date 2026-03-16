@@ -28,6 +28,7 @@ function Header() {
     { label: '折扣管理',   path: '/pricing',        action: 'view_pricing'   as const },
     { label: '庫存總覽',   path: '/inventory',      action: 'view_inventory' as const },
     // { label: '掃碼入出庫', path: '/inventory/scan', action: 'scan_inventory' as const },
+    { label: '報價單', path: '/quotes', action: 'view_pricing' as const },
   ];
 
   const menuLinks = [

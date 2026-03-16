@@ -8,6 +8,7 @@ import ScanPanel from './modules/inventory/ScanPanel';
 import TransactionHistory from './modules/inventory/TransactionHistory';
 import AdminUserPanel from './modules/admin/AdminUserPanel';
 import ProductMasterPanel from './modules/inventory/ProductMasterPanel';
+import QuotePanel from './modules/sales/QuotePanel';
 function LoginForm() {
   const { login } = useAuth();
   const [username, setUsername] = useState('');
@@ -104,6 +105,7 @@ function AppRoutes() {
         {can('view_inventory') && <Route path="/inventory/history" element={<TransactionHistory />} />}
         {role === 'admin' && <Route path="/admin/users" element={<AdminUserPanel />} />}
         {role === 'admin' && <Route path="/admin/products" element={<ProductMasterPanel />} />}
+        {can('view_pricing') && <Route path="/quotes" element={<QuotePanel />} />}
         <Route path="*" element={<Navigate to={defaultPath} replace />} />
       </Routes>
     </>

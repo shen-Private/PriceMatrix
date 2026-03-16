@@ -6,7 +6,7 @@ const API = import.meta.env.VITE_API_URL ?? '';
 
 interface Customer { id: number; name: string; }
 interface Product { id: number; name: string; basePrice: number; }
-interface QuoteItem { productId: number; quantity: number; unitPrice: number; }
+interface QuoteItem { productId: number; quantity: number; unitPrice: number; basePrice: number; }
 
 interface QuoteItemDetail {
     id: number;
@@ -40,7 +40,7 @@ const QuotePanel: React.FC = () => {
     const [products, setProducts] = useState<Product[]>([]);
     const [customerId, setCustomerId] = useState<number | ''>('');
     const [note, setNote] = useState('');
-    const [items, setItems] = useState<QuoteItem[]>([{ productId: 0, quantity: 1, unitPrice: 0 }]);
+    const [items, setItems] = useState<QuoteItem[]>([{ productId: 0, quantity: 1, unitPrice: 0, basePrice: 0 }]);
     const [editingId, setEditingId] = useState<number | null>(null);
     const loadQuotes = () => {
         axios.get(`${API}/api/quotes`).then(res => setQuotes(res.data));
@@ -52,16 +52,33 @@ const QuotePanel: React.FC = () => {
         axios.get(`${API}/api/products`).then(res => setProducts(res.data));
     }, []);
 
-    const handleProductChange = (index: number, productId: number) => {
-        const product = products.find(p => p.id === productId);
+    const handleProductChange = async (index: number, productId: number) => {
         const updated = [...items];
         updated[index].productId = productId;
-        updated[index].unitPrice = product?.basePrice ?? 0;
+        const product = products.find(p => p.id === productId);
+        updated[index].basePrice = product?.basePrice ?? 0;
+        // 如果客戶和商品都選了，查折扣
+        if (customerId && productId) {
+            try {
+                const res = await axios.get(`${API}/api/discounts/customer/${customerId}/product/${productId}`);
+                const discount = res.data; // { discountRatio: 0.8 }
+                const product = products.find(p => p.id === productId);
+                updated[index].unitPrice = Math.round((product?.basePrice ?? 0) * discount.discountRatio);
+            } catch {
+                // 沒有折扣設定，用定價
+                const product = products.find(p => p.id === productId);
+                updated[index].unitPrice = product?.basePrice ?? 0;
+            }
+        } else {
+            const product = products.find(p => p.id === productId);
+            updated[index].unitPrice = product?.basePrice ?? 0;
+        }
+
         setItems(updated);
     };
 
-    const handleAddItem = () => setItems([...items, { productId: 0, quantity: 1, unitPrice: 0 }]);
     const handleRemoveItem = (index: number) => setItems(items.filter((_, i) => i !== index));
+    const handleAddItem = () => setItems([...items, { productId: 0, quantity: 1, unitPrice: 0, basePrice: 0 }]);
     const total = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
 
     const handleSubmit = async () => {
@@ -74,7 +91,7 @@ const QuotePanel: React.FC = () => {
         setView('list');
         setCustomerId('');
         setNote('');
-        setItems([{ productId: 0, quantity: 1, unitPrice: 0 }]);
+        setItems([{ productId: 0, quantity: 1, unitPrice: 0, basePrice: 0 }]);
         setEditingId(null);
         loadQuotes();
     };
@@ -84,7 +101,8 @@ const QuotePanel: React.FC = () => {
         setItems(q.items.map(i => ({
             productId: i.product.id,
             quantity: i.quantity,
-            unitPrice: i.unitPrice
+            unitPrice: i.unitPrice,
+            basePrice: i.product.basePrice
         })));
         setEditingId(q.id);
         setView('create');
@@ -254,6 +272,11 @@ const QuotePanel: React.FC = () => {
                                                     }} />
                                             </td>
                                             <td className={styles.td}>
+                                                {item.basePrice > 0 && item.unitPrice !== item.basePrice && (
+                                                    <span style={{ textDecoration: 'line-through', color: '#96a0b8', fontSize: '12px', marginRight: '6px' }}>
+                                                        ¥{item.basePrice.toLocaleString()}
+                                                    </span>
+                                                )}
                                                 <input type="number" className={styles.itemInput} value={item.unitPrice}
                                                     style={{ width: '100px' }}
                                                     onChange={e => {

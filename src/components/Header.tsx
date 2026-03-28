@@ -25,15 +25,18 @@ function Header() {
   }, []);
 
   const mainLinks = [
-    { label: '折扣管理',   path: '/pricing',        action: 'view_pricing'   as const },
-    { label: '庫存總覽',   path: '/inventory',      action: 'view_inventory' as const },
+    { label: '折扣管理', path: '/pricing', action: 'view_pricing' as const },
+    { label: '庫存總覽', path: '/inventory', action: 'view_inventory' as const },
     // { label: '掃碼入出庫', path: '/inventory/scan', action: 'scan_inventory' as const },
+
     { label: '報價單', path: '/quotes', action: 'view_pricing' as const },
+    { label: '訂單管理', path: '/orders', action: 'view_pricing' as const },
   ];
 
   const menuLinks = [
     { label: '商品主檔管理', path: '/admin/products', action: 'manage_users' as const },
-    { label: '帳號管理',     path: '/admin/users',    action: 'manage_users' as const },
+    { label: '公司內部帳號管理', path: '/admin/users', action: 'manage_users' as const },
+    { label: '客戶管理', path: '/customers', action: 'view_customers' as const },
   ];
 
   const visibleMain = mainLinks.filter(l => can(l.action));

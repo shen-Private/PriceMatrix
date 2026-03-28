@@ -8,21 +8,23 @@ export type Action =
   | 'view_inventory'
   | 'scan_inventory'
   | 'set_safety_stock'
-  | 'manage_users';
+  | 'manage_users'
+  | 'view_customers'
+  | 'deactivate_customer';
 
 const permissions: Record<Role, Action[]> = {
-  admin: ['view_pricing', 'view_inventory', 'scan_inventory', 'set_safety_stock', 'manage_users'],
+  admin: ['view_pricing', 'view_inventory', 'scan_inventory', 'set_safety_stock', 'manage_users', 'view_customers', 'deactivate_customer'],
   warehouse: ['view_inventory', 'scan_inventory'],
-  sales: ['view_pricing', 'view_inventory'],
+  sales: ['view_pricing', 'view_inventory', 'view_customers'],  // 新增 view_customers
   cs: ['view_inventory', 'set_safety_stock'],
 };
-
 interface AuthContextType {
   role: Role | null;
   username: string | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   can: (action: Action) => boolean;
+
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);

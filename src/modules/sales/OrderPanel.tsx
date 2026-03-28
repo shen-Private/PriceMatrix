@@ -1,0 +1,275 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+
+const API = import.meta.env.VITE_API_URL ?? '';
+
+const CARRIERS = ['ヤマト運輸', '佐川急便', '福山通運'];
+
+interface Customer { id: number; name: string; }
+interface Quote { id: number; items: QuoteItem[]; }
+interface QuoteItem {
+    productId: number;
+    productName: string;
+    basePrice: number;
+    quantity: number;
+    unitPrice: number;
+}
+interface Shipment {
+    id: number;
+    carrier: string;
+    trackingNumber: string;
+    status: string;
+    shippedAt: string | null;
+    note: string;
+}
+
+interface Order {
+    id: number;
+    quote: Quote;
+    customer: Customer;
+    status: string;
+    createdBy: string;
+    createdAt: string;
+}
+
+const statusLabel: Record<string, string> = {
+    PENDING: '待出貨', COMPLETED: '已完成'
+};
+const statusColor: Record<string, string> = {
+    PENDING: '#e08c2a', COMPLETED: '#2a9d6e'
+};
+
+export default function OrderPanel() {
+    const [orders, setOrders] = useState<Order[]>([]);
+    const [shipments, setShipments] = useState<Record<number, Shipment[]>>({});
+    const [expanded, setExpanded] = useState<number | null>(null);
+
+    // 出貨單表單
+    const [showShipForm, setShowShipForm] = useState<number | null>(null);
+    const [carrier, setCarrier] = useState(CARRIERS[0]);
+    const [trackingNumber, setTrackingNumber] = useState('');
+    const [shipNote, setShipNote] = useState('');
+
+    const loadOrders = async () => {
+        const res = await axios.get(`${API}/api/orders`);
+        setOrders(res.data);
+    };
+
+    useEffect(() => { loadOrders(); }, []);
+
+    const toggleExpand = async (orderId: number) => {
+        if (expanded === orderId) {
+            setExpanded(null);
+            return;
+        }
+        setExpanded(orderId);
+        if (!shipments[orderId]) {
+            const res = await axios.get(`${API}/api/orders/${orderId}/shipments`);
+            setShipments(prev => ({ ...prev, [orderId]: res.data }));
+        }
+    };
+
+    const handleCreateShipment = async (orderId: number) => {
+        await axios.post(`${API}/api/orders/${orderId}/shipments`, {
+            carrier, trackingNumber, note: shipNote,
+        });
+        // 重新載入出貨單
+        const res = await axios.get(`${API}/api/orders/${orderId}/shipments`);
+        setShipments(prev => ({ ...prev, [orderId]: res.data }));
+        setShowShipForm(null);
+        setTrackingNumber('');
+        setShipNote('');
+    };
+
+    const handleConfirmShipment = async (shipmentId: number, orderId: number) => {
+        await axios.patch(`${API}/api/orders/shipments/${shipmentId}/confirm`);
+        const res = await axios.get(`${API}/api/orders/${orderId}/shipments`);
+        setShipments(prev => ({ ...prev, [orderId]: res.data }));
+        loadOrders(); // 訂單狀態可能變 COMPLETED
+    };
+
+    return (
+        <div style={{ padding: '24px', maxWidth: '960px', margin: '0 auto' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#2c3554', marginBottom: '20px' }}>
+                訂單管理
+            </h2>
+
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                <thead>
+                    <tr style={{ backgroundColor: '#f4f6fb', color: '#5a6480' }}>
+                        {['#', '客戶', '商品數', '合計', '狀態', '建立時間', ''].map(h => (
+                            <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600 }}>{h}</th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {orders.map(o => {
+                        const total = o.quote.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+                        const isExpanded = expanded === o.id;
+                        return (
+                            <React.Fragment key={o.id}>
+                                <tr style={{ borderBottom: '1px solid #eef0f6' }}>
+                                    <td style={td()}>
+                                        {o.id}
+                                        <span style={{ fontSize: '11px', color: '#96a0b8', marginLeft: '6px' }}>
+                                            Q#{o.quote.id}
+                                        </span>
+                                    </td>
+                                    <td style={td()}>{o.customer.name}</td>
+                                    <td style={td()}>{o.quote.items.length} 項</td>
+                                    <td style={td()}>¥{total.toLocaleString()}</td>
+                                    <td style={td()}>
+                                        <span style={{
+                                            padding: '2px 10px', borderRadius: '12px', fontSize: '12px',
+                                            fontWeight: 600,
+                                            backgroundColor: `${statusColor[o.status]}20`,
+                                            color: statusColor[o.status],
+                                        }}>
+                                            {statusLabel[o.status] ?? o.status}
+                                        </span>
+                                    </td>
+                                    <td style={{ ...td(), color: '#96a0b8', fontSize: '12px' }}>
+                                        {new Date(o.createdAt).toLocaleDateString('zh-TW')}
+                                    </td>
+                                    <td style={td()}>
+                                        <button onClick={() => toggleExpand(o.id)} style={btnStyle('#f4f6fb', '#5a6480')}>
+                                            {isExpanded ? '▲ 收起' : '▼ 出貨'}
+                                        </button>
+                                    </td>
+                                </tr>
+
+                                {isExpanded && (
+                                    <tr>
+                                        <td colSpan={7} style={{ backgroundColor: '#f8f9fd', padding: '16px 24px' }}>
+                                            {/* 商品明細 */}
+                                            <div style={{ marginBottom: '16px' }}>
+                                                <div style={sectionLabel}>商品明細</div>
+                                                <table style={{ width: '100%', fontSize: '13px', borderCollapse: 'collapse' }}>
+                                                    <thead>
+                                                        <tr style={{ color: '#5a6480' }}>
+                                                            <th style={subTh()}>商品</th>
+                                                            <th style={subTh()}>數量</th>
+                                                            <th style={subTh()}>單價</th>
+                                                            <th style={subTh()}>小計</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {o.quote.items.map((item, i) => (
+                                                            <tr key={i}>
+                                                                <td style={subTd()}>{item.productName}</td>
+                                                                <td style={subTd()}>{item.quantity}</td>
+                                                                <td style={subTd()}>¥{item.unitPrice.toLocaleString()}</td>
+                                                                <td style={subTd()}>¥{(item.quantity * item.unitPrice).toLocaleString()}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            {/* 出貨單列表 */}
+                                            <div style={{ marginBottom: '12px' }}>
+                                                <div style={sectionLabel}>出貨單</div>
+                                                {(shipments[o.id] ?? []).length === 0 ? (
+                                                    <div style={{ color: '#96a0b8', fontSize: '12px', padding: '8px 0' }}>尚無出貨單</div>
+                                                ) : (
+                                                    <table style={{ width: '100%', fontSize: '13px', borderCollapse: 'collapse' }}>
+                                                        <thead>
+                                                            <tr style={{ color: '#5a6480' }}>
+                                                                <th style={subTh()}>運送公司</th>
+                                                                <th style={subTh()}>追蹤號碼</th>
+                                                                <th style={subTh()}>狀態</th>
+                                                                <th style={subTh()}>出貨時間</th>
+                                                                <th style={subTh()}></th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {(shipments[o.id] ?? []).map(s => (
+                                                                <tr key={s.id}>
+                                                                    <td style={subTd()}>{s.carrier}</td>
+                                                                    <td style={subTd()}>{s.trackingNumber || '—'}</td>
+                                                                    <td style={subTd()}>
+                                                                        <span style={{
+                                                                            padding: '2px 8px', borderRadius: '10px', fontSize: '11px',
+                                                                            fontWeight: 600,
+                                                                            backgroundColor: s.status === 'SHIPPED' ? '#2a9d6e20' : '#e08c2a20',
+                                                                            color: s.status === 'SHIPPED' ? '#2a9d6e' : '#e08c2a',
+                                                                        }}>
+                                                                            {s.status === 'SHIPPED' ? '已出貨' : '準備中'}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td style={{ ...subTd(), color: '#96a0b8', fontSize: '12px' }}>
+                                                                        {s.shippedAt ? new Date(s.shippedAt).toLocaleDateString('zh-TW') : '—'}
+                                                                    </td>
+                                                                    <td style={subTd()}>
+                                                                        {s.status === 'PREPARING' && (
+                                                                            <button
+                                                                                onClick={() => handleConfirmShipment(s.id, o.id)}
+                                                                                style={btnStyle('#4a78c4', '#fff')}
+                                                                            >
+                                                                                確認出貨
+                                                                            </button>
+                                                                        )}
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                )}
+                                            </div>
+
+                                            {/* 建立出貨單表單 */}
+                                            {o.status === 'PENDING' && (
+                                                showShipForm === o.id ? (
+                                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                            <label style={formLabel}>運送公司</label>
+                                                            <select value={carrier} onChange={e => setCarrier(e.target.value)} style={inputStyle}>
+                                                                {CARRIERS.map(c => <option key={c} value={c}>{c}</option>)}
+                                                            </select>
+                                                        </div>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                            <label style={formLabel}>追蹤號碼</label>
+                                                            <input value={trackingNumber} onChange={e => setTrackingNumber(e.target.value)}
+                                                                placeholder="選填" style={inputStyle} />
+                                                        </div>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                            <label style={formLabel}>備註</label>
+                                                            <input value={shipNote} onChange={e => setShipNote(e.target.value)}
+                                                                placeholder="選填" style={inputStyle} />
+                                                        </div>
+                                                        <button onClick={() => handleCreateShipment(o.id)} style={btnStyle('#4a78c4', '#fff')}>
+                                                            建立出貨單
+                                                        </button>
+                                                        <button onClick={() => setShowShipForm(null)} style={btnStyle('#f4f6fb', '#5a6480')}>
+                                                            取消
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <button onClick={() => setShowShipForm(o.id)} style={btnStyle('#f0f5ff', '#4a78c4')}>
+                                                        ＋ 建立出貨單
+                                                    </button>
+                                                )
+                                            )}
+                                        </td>
+                                    </tr>
+                                )}
+                            </React.Fragment>
+                        );
+                    })}
+                </tbody>
+            </table>
+        </div>
+    );
+}
+
+// --- 樣式 ---
+const td = (): React.CSSProperties => ({ padding: '10px 12px', color: '#2c3554' });
+const subTh = (): React.CSSProperties => ({ padding: '6px 10px', textAlign: 'left', fontWeight: 600, color: '#5a6480' });
+const subTd = (): React.CSSProperties => ({ padding: '6px 10px', color: '#2c3554' });
+const sectionLabel: React.CSSProperties = { fontSize: '12px', fontWeight: 700, color: '#5a6480', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' };
+const formLabel: React.CSSProperties = { fontSize: '12px', color: '#5a6480', fontWeight: 600 };
+const inputStyle: React.CSSProperties = { padding: '7px 10px', borderRadius: '6px', border: '1px solid #dde3f0', fontSize: '13px' };
+const btnStyle = (bg: string, color: string): React.CSSProperties => ({
+    padding: '7px 14px', borderRadius: '6px', border: 'none',
+    backgroundColor: bg, color, fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+});

@@ -10,11 +10,12 @@ interface QuoteItem { productId: number; quantity: number; unitPrice: number; ba
 
 interface QuoteItemDetail {
     id: number;
-    product: { id: number; name: string; basePrice: number };
+    productId: number;
+    productName: string;
+    basePrice: number;
     quantity: number;
     unitPrice: number;
 }
-
 interface Quote {
     id: number;
     customer: { id: number; name: string };
@@ -99,10 +100,10 @@ const QuotePanel: React.FC = () => {
         setCustomerId(q.customer.id);
         setNote(q.note ?? '');
         setItems(q.items.map(i => ({
-            productId: i.product.id,
+            productId: i.productId,        // 改這裡
             quantity: i.quantity,
             unitPrice: i.unitPrice,
-            basePrice: i.product.basePrice
+            basePrice: i.basePrice         // 改這裡
         })));
         setEditingId(q.id);
         setView('create');
@@ -116,7 +117,11 @@ const QuotePanel: React.FC = () => {
         await axios.patch(`${API}/api/quotes/${id}/status`, { status });
         loadQuotes();
     };
-
+    const handleConvert = async (id: number) => {
+        if (!window.confirm('確認成立此報價單並建立訂單？')) return;
+        await axios.post(`${API}/api/orders/from-quote/${id}`);
+        loadQuotes();
+    };
     return (
         <div className={styles.root}>
             <div className={styles.main}>
@@ -159,7 +164,7 @@ const QuotePanel: React.FC = () => {
                                                 {q.id}
                                                 {q.parentQuote && (
                                                     <span style={{ fontSize: '11px', color: '#96a0b8', marginLeft: '6px' }}>
-                                                        ← #{q.parentQuote.id}
+                                                        修訂自 Q#{q.parentQuote.id}
                                                     </span>
                                                 )}
                                             </td>
@@ -206,7 +211,7 @@ const QuotePanel: React.FC = () => {
                                                     {q.status === 'SENT' && (
                                                         <button
                                                             className={styles.btnIcon}
-                                                            onClick={() => handleStatusChange(q.id, 'CONVERTED')}
+                                                            onClick={() => handleConvert(q.id)}
                                                             title="確認成立"
                                                         >✅</button>
                                                     )}

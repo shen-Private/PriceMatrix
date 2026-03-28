@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../AuthContext';
-
+import React from 'react';
 const API = import.meta.env.VITE_API_URL ?? '';
 
 interface Customer {
@@ -15,6 +15,32 @@ interface Customer {
   parent: { id: number; name: string } | null;
   active: boolean;  // 新增
 }
+interface ContactLog {
+  id: number;
+  customerId: number;
+  type: string;
+  contactedAt: string;
+  result: string;
+  note: string;
+  nextAction: string;
+  createdBy: string;
+}
+
+interface ContactLogForm {
+  type: string;
+  contactedAt: string;
+  result: string;
+  note: string;
+  nextAction: string;
+}
+
+const emptyLog = (): ContactLogForm => ({
+  type: 'PHONE',
+  contactedAt: new Date().toISOString().slice(0, 16),
+  result: 'PENDING',
+  note: '',
+  nextAction: '',
+});
 const empty = (): Omit<Customer, 'id'> => ({
   name: '', email: '', phone: '', address: '',
   contactPerson: '', note: '', parent: null,
@@ -31,13 +57,47 @@ export default function CustomerPanel() {
   const [error, setError] = useState('');
   const [deactivateTarget, setDeactivateTarget] = useState<Customer | null>(null);
   const [deactivateInput, setDeactivateInput] = useState('');
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [contactLogs, setContactLogs] = useState<Record<number, ContactLog[]>>({});
+  const [logForm, setLogForm] = useState<ContactLogForm>(emptyLog());
+  const [logLoading, setLogLoading] = useState(false);
   const fetchCustomers = async () => {
     const res = await axios.get(`${API}/api/customers`);
     setCustomers(res.data);
   };
 
   useEffect(() => { fetchCustomers(); }, []);
+  const fetchContactLogs = async (customerId: number) => {
+    const res = await axios.get(`${API}/api/contact-logs/customer/${customerId}`);
+    setContactLogs(prev => ({ ...prev, [customerId]: res.data }));
+  };
 
+  const toggleExpand = (customerId: number) => {
+    if (expandedId === customerId) {
+      setExpandedId(null);
+    } else {
+      setExpandedId(customerId);
+      fetchContactLogs(customerId);
+      setLogForm(emptyLog());
+    }
+  };
+
+  const handleAddLog = async (customerId: number) => {
+    setLogLoading(true);
+    try {
+      await axios.post(`${API}/api/contact-logs`, {
+        ...logForm,
+        customerId,
+        contactedAt: new Date(logForm.contactedAt).toISOString().slice(0, 19),
+      });
+      fetchContactLogs(customerId);
+      setLogForm(emptyLog());
+    } catch {
+      setError('新增失敗');
+    } finally {
+      setLogLoading(false);
+    }
+  };
   const openCreate = () => {
     setEditTarget(null);
     setForm(empty());
@@ -123,38 +183,121 @@ export default function CustomerPanel() {
             ))}
           </tr>
         </thead>
-        <tbody>
-          {customers.map(c => (
-            <tr key={c.id} style={{ borderBottom: '1px solid #eef0f6', backgroundColor: c.active ? undefined : '#f9f9f9', opacity: c.active ? 1 : 0.6 }}>
-              <td style={td()}>{c.name}</td>
-              <td style={td()}>{c.contactPerson || '—'}</td>
-              <td style={td()}>{c.phone || '—'}</td>
-              <td style={td()}>{c.email || '—'}</td>
-              <td style={td()}>{c.address || '—'}</td>
-              <td style={td()}>{c.parent?.name || '—'}</td>
-              <td style={td()}>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  {can('view_customers') && (
-                    <button onClick={() => openEdit(c)} style={btnStyle('#f0f5ff', '#4a78c4')}>
-                      編輯
-                    </button>
-                  )}
-                  {can('deactivate_customer') && (
-                    <button onClick={() => {
-                      if (c.active) {
-                        setDeactivateTarget(c); setDeactivateInput(''); setError('');
-                      } else {
-                        handleActivate(c);
-                      }
-                    }} style={btnStyle(c.active ? '#fff0f0' : '#f0f5ff', c.active ? '#e05c5c' : '#4a78c4')}>
-                      {c.active ? '停用' : '啟用'}
-                    </button>
-                  )}
+<tbody>
+  {customers.map(c => (
+    <React.Fragment key={c.id}>
+      <tr
+        style={{ borderBottom: '1px solid #eef0f6', backgroundColor: c.active ? undefined : '#f9f9f9', opacity: c.active ? 1 : 0.6, cursor: 'pointer' }}
+        onClick={() => toggleExpand(c.id)}
+      >
+        <td style={td()}>{c.name}</td>
+        <td style={td()}>{c.contactPerson || '—'}</td>
+        <td style={td()}>{c.phone || '—'}</td>
+        <td style={td()}>{c.email || '—'}</td>
+        <td style={td()}>{c.address || '—'}</td>
+        <td style={td()}>{c.parent?.name || '—'}</td>
+        <td style={td()} onClick={e => e.stopPropagation()}>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {can('view_customers') && (
+              <button onClick={() => openEdit(c)} style={btnStyle('#f0f5ff', '#4a78c4')}>編輯</button>
+            )}
+            {can('deactivate_customer') && (
+              <button onClick={() => {
+                if (c.active) {
+                  setDeactivateTarget(c); setDeactivateInput(''); setError('');
+                } else {
+                  handleActivate(c);
+                }
+              }} style={btnStyle(c.active ? '#fff0f0' : '#f0f5ff', c.active ? '#e05c5c' : '#4a78c4')}>
+                {c.active ? '停用' : '啟用'}
+              </button>
+            )}
+          </div>
+        </td>
+      </tr>
+
+      {/* 展開行：時間軸 + 新增表單 */}
+      {expandedId === c.id && (
+        <tr>
+          <td colSpan={7} style={{ backgroundColor: '#f8faff', padding: '16px 24px', borderBottom: '2px solid #dde3f0' }}>
+            <div style={{ display: 'flex', gap: '32px' }}>
+
+              {/* 左側：時間軸 */}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: '#2c3554', marginBottom: '12px' }}>聯絡紀錄</div>
+                {(contactLogs[c.id] ?? []).length === 0 ? (
+                  <div style={{ fontSize: '12px', color: '#96a0b8' }}>尚無紀錄</div>
+                ) : (
+                  (contactLogs[c.id] ?? []).map(log => (
+                    <div key={log.id} style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
+                      <div style={{ fontSize: '11px', color: '#96a0b8', whiteSpace: 'nowrap', paddingTop: '2px' }}>
+                        {new Date(log.contactedAt).toLocaleDateString('zh-TW')}
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '2px' }}>
+                          <span style={tagStyle(typeColor(log.type))}>{typeLabel(log.type)}</span>
+                          <span style={tagStyle(resultColor(log.result))}>{resultLabel(log.result)}</span>
+                          <span style={{ fontSize: '11px', color: '#96a0b8' }}>{log.createdBy}</span>
+                        </div>
+                        {log.note && <div style={{ fontSize: '12px', color: '#2c3554' }}>{log.note}</div>}
+                        {log.nextAction && <div style={{ fontSize: '11px', color: '#7a85a0', marginTop: '2px' }}>→ {log.nextAction}</div>}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* 右側：新增表單 */}
+              <div style={{ width: '280px', borderLeft: '1px solid #dde3f0', paddingLeft: '24px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: '#2c3554', marginBottom: '12px' }}>新增紀錄</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <Field label="互動方式">
+                    <select style={inputStyle} value={logForm.type}
+                      onChange={e => setLogForm(f => ({ ...f, type: e.target.value }))}>
+                      <option value="VISIT">拜訪</option>
+                      <option value="PHONE">電話</option>
+                      <option value="EMAIL">郵件</option>
+                      <option value="QUOTE">報價</option>
+                      <option value="OTHER">其他</option>
+                    </select>
+                  </Field>
+                  <Field label="日期時間">
+                    <input style={inputStyle} type="datetime-local" value={logForm.contactedAt}
+                      onChange={e => setLogForm(f => ({ ...f, contactedAt: e.target.value }))} />
+                  </Field>
+                  <Field label="結果">
+                    <select style={inputStyle} value={logForm.result}
+                      onChange={e => setLogForm(f => ({ ...f, result: e.target.value }))}>
+                      <option value="PENDING">待跟進</option>
+                      <option value="OK">正面</option>
+                      <option value="NO">負面</option>
+                    </select>
+                  </Field>
+                  <Field label="內容">
+                    <textarea style={{ ...inputStyle, height: '60px', resize: 'vertical' }}
+                      value={logForm.note}
+                      onChange={e => setLogForm(f => ({ ...f, note: e.target.value }))} />
+                  </Field>
+                  <Field label="下次行動">
+                    <input style={inputStyle} value={logForm.nextAction}
+                      onChange={e => setLogForm(f => ({ ...f, nextAction: e.target.value }))} />
+                  </Field>
+                  <button
+                    onClick={() => handleAddLog(c.id)}
+                    disabled={logLoading}
+                    style={{ ...btnStyle('#4a78c4', '#fff'), marginTop: '4px' }}>
+                    {logLoading ? '儲存中...' : '新增'}
+                  </button>
                 </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
+              </div>
+
+            </div>
+          </td>
+        </tr>
+      )}
+    </React.Fragment>
+  ))}
+</tbody>
       </table>
 
       {/* 新增/編輯 Modal */}
@@ -279,3 +422,12 @@ const modalStyle: React.CSSProperties = {
   width: '480px', maxHeight: '90vh', overflowY: 'auto',
   boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
 };
+const typeLabel = (type: string) => ({ VISIT: '拜訪', PHONE: '電話', EMAIL: '郵件', QUOTE: '報價', OTHER: '其他' }[type] ?? type);
+const resultLabel = (result: string) => ({ PENDING: '待跟進', OK: '正面', NO: '負面' }[result] ?? result);
+const typeColor = (type: string) => ({ VISIT: '#e8f0fe', PHONE: '#e6f4ea', EMAIL: '#fff8e1', QUOTE: '#fce8e6', OTHER: '#f3e8fd' }[type] ?? '#f4f6fb');
+const resultColor = (result: string) => ({ PENDING: '#fff8e1', OK: '#e6f4ea', NO: '#fce8e6' }[result] ?? '#f4f6fb');
+
+const tagStyle = (bg: string): React.CSSProperties => ({
+  fontSize: '11px', padding: '2px 6px', borderRadius: '4px',
+  backgroundColor: bg, color: '#2c3554', fontWeight: 600,
+});

@@ -13,7 +13,15 @@ interface Customer {
   contactPerson: string;
   note: string;
   parent: { id: number; name: string } | null;
-  active: boolean;  // 新增
+  active: boolean;
+  prospectId: number | null;
+  assignedTo: string | null;
+}
+interface User {
+  id: number;
+  username: string;
+  role: string;
+  isActive: boolean;
 }
 interface ContactLog {
   id: number;
@@ -44,7 +52,9 @@ const emptyLog = (): ContactLogForm => ({
 const empty = (): Omit<Customer, 'id'> => ({
   name: '', email: '', phone: '', address: '',
   contactPerson: '', note: '', parent: null,
-  active: true,  // 新增
+  active: true,
+  prospectId: null,
+  assignedTo: '',
 });
 
 export default function CustomerPanel() {
@@ -61,6 +71,10 @@ export default function CustomerPanel() {
   const [contactLogs, setContactLogs] = useState<Record<number, ContactLog[]>>({});
   const [logForm, setLogForm] = useState<ContactLogForm>(emptyLog());
   const [logLoading, setLogLoading] = useState(false);
+  const [quotes, setQuotes] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [salesUsers, setSalesUsers] = useState<User[]>([]);
+  const [activeTab, setActiveTab] = useState<'timeline' | 'quotes' | 'orders' | 'logs' | 'prospect'>('timeline');
   const fetchCustomers = async () => {
     const res = await axios.get(`${API}/api/customers`);
     setCustomers(res.data);
@@ -71,7 +85,16 @@ export default function CustomerPanel() {
     const res = await axios.get(`${API}/api/contact-logs/customer/${customerId}`);
     setContactLogs(prev => ({ ...prev, [customerId]: res.data }));
   };
-
+  useEffect(() => {
+    fetchCustomers();
+    axios.get(`${API}/api/quotes`).then(res => setQuotes(res.data));
+    axios.get(`${API}/api/orders`).then(res => setOrders(res.data));
+    axios.get(`${API}/api/admin/users`).then(res => {
+      setSalesUsers(res.data.filter((u: User) =>
+        (u.role === 'sales' || u.role === 'admin') && u.isActive
+      ));
+    });
+  }, []);
   const toggleExpand = (customerId: number) => {
     if (expandedId === customerId) {
       setExpandedId(null);
@@ -111,6 +134,7 @@ export default function CustomerPanel() {
       name: c.name, email: c.email ?? '', phone: c.phone ?? '',
       address: c.address ?? '', contactPerson: c.contactPerson ?? '',
       note: c.note ?? '', parent: c.parent, active: true,
+      prospectId: c.prospectId, assignedTo: c.assignedTo ?? '',
     });
     setError('');
     setShowForm(true);
@@ -183,121 +207,219 @@ export default function CustomerPanel() {
             ))}
           </tr>
         </thead>
-<tbody>
-  {customers.map(c => (
-    <React.Fragment key={c.id}>
-      <tr
-        style={{ borderBottom: '1px solid #eef0f6', backgroundColor: c.active ? undefined : '#f9f9f9', opacity: c.active ? 1 : 0.6, cursor: 'pointer' }}
-        onClick={() => toggleExpand(c.id)}
-      >
-        <td style={td()}>{c.name}</td>
-        <td style={td()}>{c.contactPerson || '—'}</td>
-        <td style={td()}>{c.phone || '—'}</td>
-        <td style={td()}>{c.email || '—'}</td>
-        <td style={td()}>{c.address || '—'}</td>
-        <td style={td()}>{c.parent?.name || '—'}</td>
-        <td style={td()} onClick={e => e.stopPropagation()}>
-          <div style={{ display: 'flex', gap: '6px' }}>
-            {can('view_customers') && (
-              <button onClick={() => openEdit(c)} style={btnStyle('#f0f5ff', '#4a78c4')}>編輯</button>
-            )}
-            {can('deactivate_customer') && (
-              <button onClick={() => {
-                if (c.active) {
-                  setDeactivateTarget(c); setDeactivateInput(''); setError('');
-                } else {
-                  handleActivate(c);
-                }
-              }} style={btnStyle(c.active ? '#fff0f0' : '#f0f5ff', c.active ? '#e05c5c' : '#4a78c4')}>
-                {c.active ? '停用' : '啟用'}
-              </button>
-            )}
-          </div>
-        </td>
-      </tr>
+        <tbody>
+          {customers.map(c => (
+            <React.Fragment key={c.id}>
+              <tr
+                style={{ borderBottom: '1px solid #eef0f6', backgroundColor: c.active ? undefined : '#f9f9f9', opacity: c.active ? 1 : 0.6, cursor: 'pointer' }}
+                onClick={() => toggleExpand(c.id)}
+              >
+                <td style={td()}>{c.name}</td>
+                <td style={td()}>{c.contactPerson || '—'}</td>
+                <td style={td()}>{c.phone || '—'}</td>
+                <td style={td()}>{c.email || '—'}</td>
+                <td style={td()}>{c.address || '—'}</td>
+                <td style={td()}>{c.parent?.name || '—'}</td>
+                <td style={td()} onClick={e => e.stopPropagation()}>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {can('view_customers') && (
+                      <button onClick={() => openEdit(c)} style={btnStyle('#f0f5ff', '#4a78c4')}>編輯</button>
+                    )}
+                    {can('deactivate_customer') && (
+                      <button onClick={() => {
+                        if (c.active) {
+                          setDeactivateTarget(c); setDeactivateInput(''); setError('');
+                        } else {
+                          handleActivate(c);
+                        }
+                      }} style={btnStyle(c.active ? '#fff0f0' : '#f0f5ff', c.active ? '#e05c5c' : '#4a78c4')}>
+                        {c.active ? '停用' : '啟用'}
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
 
-      {/* 展開行：時間軸 + 新增表單 */}
-      {expandedId === c.id && (
-        <tr>
-          <td colSpan={7} style={{ backgroundColor: '#f8faff', padding: '16px 24px', borderBottom: '2px solid #dde3f0' }}>
-            <div style={{ display: 'flex', gap: '32px' }}>
+              {/* 展開行：時間軸 + 新增表單 */}
+              {expandedId === c.id && (
+                <tr>
+                  <td colSpan={7} style={{ backgroundColor: '#f8faff', padding: '16px 24px', borderBottom: '2px solid #dde3f0' }}>
+                    <div style={{ display: 'flex', gap: '32px' }}>
 
-              {/* 左側：時間軸 */}
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: '#2c3554', marginBottom: '12px' }}>聯絡紀錄</div>
-                {(contactLogs[c.id] ?? []).length === 0 ? (
-                  <div style={{ fontSize: '12px', color: '#96a0b8' }}>尚無紀錄</div>
-                ) : (
-                  (contactLogs[c.id] ?? []).map(log => (
-                    <div key={log.id} style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
-                      <div style={{ fontSize: '11px', color: '#96a0b8', whiteSpace: 'nowrap', paddingTop: '2px' }}>
-                        {new Date(log.contactedAt).toLocaleDateString('zh-TW')}
+                      {/* 左側：時間軸 */}
+                      <div style={{ flex: 1 }}>
+                        {/* Tab 切換 */}
+                        {(() => {
+                          const customerQuotes = quotes.filter(q => q.customer?.id === c.id);
+                          const customerOrders = orders.filter(o => o.customer?.id === c.id);
+                          const customerLogs = contactLogs[c.id] ?? [];
+                          const timelineItems = [
+                            ...customerQuotes.map(q => ({ type: 'quote' as const, date: q.createdAt, data: q })),
+                            ...customerOrders.map(o => ({ type: 'order' as const, date: o.createdAt, data: o })),
+                            ...customerLogs.map(l => ({ type: 'log' as const, date: l.contactedAt, data: l })),
+                          ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+                          return (
+                            <>
+                              <div style={{ display: 'flex', gap: '4px', marginBottom: '16px' }}>
+                                {([
+                                  ['timeline', '時間軸'],
+                                  ['quotes', '報價單'],
+                                  ['orders', '訂單'],
+                                  ['logs', '聯絡紀錄'],
+                                  ...(c.prospectId ? [['prospect', '開發履歷']] : []),
+                                ] as ['timeline' | 'quotes' | 'orders' | 'logs' | 'prospect', string][]).map(([key, label]) => (
+                                  <button key={key} onClick={() => setActiveTab(key)}
+                                    style={{
+                                      padding: '5px 12px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600,
+                                      backgroundColor: activeTab === key ? '#4a78c4' : '#f4f6fb',
+                                      color: activeTab === key ? '#fff' : '#5a6480'
+                                    }}>
+                                    {label}
+                                  </button>
+                                ))}
+                              </div>
+
+                              {activeTab === 'timeline' && (
+                                <div>
+                                  {timelineItems.length === 0 ? (
+                                    <div style={{ fontSize: '12px', color: '#96a0b8' }}>尚無紀錄</div>
+                                  ) : timelineItems.map((item, idx) => (
+                                    <div key={idx} style={{ display: 'flex', gap: '12px', marginBottom: '10px', fontSize: '12px' }}>
+                                      <span style={{ color: '#96a0b8', whiteSpace: 'nowrap', paddingTop: '2px' }}>
+                                        {new Date(item.date).toLocaleDateString('zh-TW')}
+                                      </span>
+                                      {item.type === 'quote' && <>
+                                        <span style={tagStyle('#e8f0fe')}>報價</span>
+                                        <span style={{ color: '#4a78c4', fontWeight: 600 }}>Q#{item.data.id}</span>
+                                        <span style={tagStyle(statusColor(item.data.status))}>{statusLabel(item.data.status)}</span>
+                                        <span style={{ color: '#5a6480' }}>¥{item.data.items?.reduce((s: number, i: any) => s + i.quantity * i.unitPrice, 0).toLocaleString()}</span>
+                                      </>}
+                                      {item.type === 'order' && <>
+                                        <span style={tagStyle('#e6f4ea')}>訂單</span>
+                                        <span style={{ color: '#4a78c4', fontWeight: 600 }}>#{item.data.id}</span>
+                                        <span style={tagStyle(orderStatusColor(item.data.status))}>{orderStatusLabel(item.data.status)}</span>
+                                      </>}
+                                      {item.type === 'log' && <>
+                                        <span style={tagStyle(typeColor(item.data.type))}>{typeLabel(item.data.type)}</span>
+                                        <span style={tagStyle(resultColor(item.data.result))}>{resultLabel(item.data.result)}</span>
+                                        <span style={{ color: '#2c3554' }}>{item.data.note}</span>
+                                      </>}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {activeTab === 'quotes' && (
+                                <div>
+                                  {customerQuotes.length === 0 ? (
+                                    <div style={{ fontSize: '12px', color: '#96a0b8' }}>尚無報價單</div>
+                                  ) : customerQuotes.map(q => (
+                                    <div key={q.id} style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '6px', fontSize: '12px' }}>
+                                      <span style={{ color: '#96a0b8' }}>{new Date(q.createdAt).toLocaleDateString('zh-TW')}</span>
+                                      <span style={{ color: '#4a78c4', fontWeight: 600 }}>Q#{q.id}</span>
+                                      <span style={tagStyle(statusColor(q.status))}>{statusLabel(q.status)}</span>
+                                      <span style={{ color: '#5a6480' }}>¥{q.items?.reduce((s: number, i: any) => s + i.quantity * i.unitPrice, 0).toLocaleString()}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {activeTab === 'orders' && (
+                                <div>
+                                  {customerOrders.length === 0 ? (
+                                    <div style={{ fontSize: '12px', color: '#96a0b8' }}>尚無訂單</div>
+                                  ) : customerOrders.map(o => (
+                                    <div key={o.id} style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '6px', fontSize: '12px' }}>
+                                      <span style={{ color: '#96a0b8' }}>{new Date(o.createdAt).toLocaleDateString('zh-TW')}</span>
+                                      <span style={{ color: '#4a78c4', fontWeight: 600 }}>#{o.id}</span>
+                                      <span style={tagStyle(orderStatusColor(o.status))}>{orderStatusLabel(o.status)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {activeTab === 'logs' && (
+                                <div>
+                                  {customerLogs.length === 0 ? (
+                                    <div style={{ fontSize: '12px', color: '#96a0b8' }}>尚無紀錄</div>
+                                  ) : customerLogs.map(log => (
+                                    <div key={log.id} style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
+                                      <div style={{ fontSize: '11px', color: '#96a0b8', whiteSpace: 'nowrap', paddingTop: '2px' }}>
+                                        {new Date(log.contactedAt).toLocaleDateString('zh-TW')}
+                                      </div>
+                                      <div>
+                                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '2px' }}>
+                                          <span style={tagStyle(typeColor(log.type))}>{typeLabel(log.type)}</span>
+                                          <span style={tagStyle(resultColor(log.result))}>{resultLabel(log.result)}</span>
+                                          <span style={{ fontSize: '11px', color: '#96a0b8' }}>{log.createdBy}</span>
+                                        </div>
+                                        {log.note && <div style={{ fontSize: '12px', color: '#2c3554' }}>{log.note}</div>}
+                                        {log.nextAction && <div style={{ fontSize: '11px', color: '#7a85a0', marginTop: '2px' }}>→ {log.nextAction}</div>}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              {activeTab === 'prospect' && (
+                                <ProspectHistory prospectId={c.prospectId!} />
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
-                      <div>
-                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '2px' }}>
-                          <span style={tagStyle(typeColor(log.type))}>{typeLabel(log.type)}</span>
-                          <span style={tagStyle(resultColor(log.result))}>{resultLabel(log.result)}</span>
-                          <span style={{ fontSize: '11px', color: '#96a0b8' }}>{log.createdBy}</span>
+
+                      {/* 右側：新增表單 */}
+                      <div style={{ width: '280px', borderLeft: '1px solid #dde3f0', paddingLeft: '24px' }}>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#2c3554', marginBottom: '12px' }}>新增紀錄</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <Field label="互動方式">
+                            <select style={inputStyle} value={logForm.type}
+                              onChange={e => setLogForm(f => ({ ...f, type: e.target.value }))}>
+                              <option value="VISIT">拜訪</option>
+                              <option value="PHONE">電話</option>
+                              <option value="EMAIL">郵件</option>
+                              <option value="QUOTE">報價</option>
+                              <option value="OTHER">其他</option>
+                            </select>
+                          </Field>
+                          <Field label="日期時間">
+                            <input style={inputStyle} type="datetime-local" value={logForm.contactedAt}
+                              onChange={e => setLogForm(f => ({ ...f, contactedAt: e.target.value }))} />
+                          </Field>
+                          <Field label="結果">
+                            <select style={inputStyle} value={logForm.result}
+                              onChange={e => setLogForm(f => ({ ...f, result: e.target.value }))}>
+                              <option value="PENDING">待跟進</option>
+                              <option value="OK">正面</option>
+                              <option value="NO">負面</option>
+                            </select>
+                          </Field>
+                          <Field label="內容">
+                            <textarea style={{ ...inputStyle, height: '60px', resize: 'vertical' }}
+                              value={logForm.note}
+                              onChange={e => setLogForm(f => ({ ...f, note: e.target.value }))} />
+                          </Field>
+                          <Field label="下次行動">
+                            <input style={inputStyle} value={logForm.nextAction}
+                              onChange={e => setLogForm(f => ({ ...f, nextAction: e.target.value }))} />
+                          </Field>
+                          <button
+                            onClick={() => handleAddLog(c.id)}
+                            disabled={logLoading}
+                            style={{ ...btnStyle('#4a78c4', '#fff'), marginTop: '4px' }}>
+                            {logLoading ? '儲存中...' : '新增'}
+                          </button>
                         </div>
-                        {log.note && <div style={{ fontSize: '12px', color: '#2c3554' }}>{log.note}</div>}
-                        {log.nextAction && <div style={{ fontSize: '11px', color: '#7a85a0', marginTop: '2px' }}>→ {log.nextAction}</div>}
                       </div>
+
                     </div>
-                  ))
-                )}
-              </div>
-
-              {/* 右側：新增表單 */}
-              <div style={{ width: '280px', borderLeft: '1px solid #dde3f0', paddingLeft: '24px' }}>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: '#2c3554', marginBottom: '12px' }}>新增紀錄</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <Field label="互動方式">
-                    <select style={inputStyle} value={logForm.type}
-                      onChange={e => setLogForm(f => ({ ...f, type: e.target.value }))}>
-                      <option value="VISIT">拜訪</option>
-                      <option value="PHONE">電話</option>
-                      <option value="EMAIL">郵件</option>
-                      <option value="QUOTE">報價</option>
-                      <option value="OTHER">其他</option>
-                    </select>
-                  </Field>
-                  <Field label="日期時間">
-                    <input style={inputStyle} type="datetime-local" value={logForm.contactedAt}
-                      onChange={e => setLogForm(f => ({ ...f, contactedAt: e.target.value }))} />
-                  </Field>
-                  <Field label="結果">
-                    <select style={inputStyle} value={logForm.result}
-                      onChange={e => setLogForm(f => ({ ...f, result: e.target.value }))}>
-                      <option value="PENDING">待跟進</option>
-                      <option value="OK">正面</option>
-                      <option value="NO">負面</option>
-                    </select>
-                  </Field>
-                  <Field label="內容">
-                    <textarea style={{ ...inputStyle, height: '60px', resize: 'vertical' }}
-                      value={logForm.note}
-                      onChange={e => setLogForm(f => ({ ...f, note: e.target.value }))} />
-                  </Field>
-                  <Field label="下次行動">
-                    <input style={inputStyle} value={logForm.nextAction}
-                      onChange={e => setLogForm(f => ({ ...f, nextAction: e.target.value }))} />
-                  </Field>
-                  <button
-                    onClick={() => handleAddLog(c.id)}
-                    disabled={logLoading}
-                    style={{ ...btnStyle('#4a78c4', '#fff'), marginTop: '4px' }}>
-                    {logLoading ? '儲存中...' : '新增'}
-                  </button>
-                </div>
-              </div>
-
-            </div>
-          </td>
-        </tr>
-      )}
-    </React.Fragment>
-  ))}
-</tbody>
+                  </td>
+                </tr>
+              )}
+            </React.Fragment>
+          ))}
+        </tbody>
       </table>
 
       {/* 新增/編輯 Modal */}
@@ -341,6 +463,15 @@ export default function CustomerPanel() {
                   {customers
                     .filter(c => c.id !== editTarget?.id) // 自己不能是自己的上層
                     .map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </Field>
+              <Field label="負責業務">
+                <select style={inputStyle} value={form.assignedTo ?? ''}
+                  onChange={e => setForm(f => ({ ...f, assignedTo: e.target.value }))}>
+                  <option value="">未分配</option>
+                  {salesUsers.map(u => (
+                    <option key={u.id} value={u.username}>{u.username}</option>
+                  ))}
                 </select>
               </Field>
               <Field label="備註">
@@ -431,3 +562,29 @@ const tagStyle = (bg: string): React.CSSProperties => ({
   fontSize: '11px', padding: '2px 6px', borderRadius: '4px',
   backgroundColor: bg, color: '#2c3554', fontWeight: 600,
 });
+const statusLabel = (s: string) => ({ DRAFT: '草稿', SENT: '已送出', CONVERTED: '已轉訂單', CANCELLED: '已取消' }[s] ?? s);
+const statusColor = (s: string) => ({ DRAFT: '#f4f6fb', SENT: '#e8f0fe', CONVERTED: '#e6f4ea', CANCELLED: '#fce8e6' }[s] ?? '#f4f6fb');
+const orderStatusLabel = (s: string) => ({ RECEIVED: '已收單', PREPARING: '備貨中', SHIPPED: '已出貨', DELIVERED: '已送達' }[s] ?? s);
+const orderStatusColor = (s: string) => ({ RECEIVED: '#f4f6fb', PREPARING: '#fff8e1', SHIPPED: '#e8f0fe', DELIVERED: '#e6f4ea' }[s] ?? '#f4f6fb');
+function ProspectHistory({ prospectId }: { prospectId: number }) {
+  const [logs, setLogs] = useState<any[]>([]);
+  useEffect(() => {
+    axios.get(`${API}/api/contact-logs/prospect/${prospectId}`)
+      .then(res => setLogs(res.data));
+  }, [prospectId]);
+  if (logs.length === 0) return <div style={{ fontSize: '12px', color: '#96a0b8' }}>尚無開發紀錄</div>;
+  return (
+    <div>
+      {logs.map(log => (
+        <div key={log.id} style={{ display: 'flex', gap: '12px', marginBottom: '10px', fontSize: '12px' }}>
+          <span style={{ color: '#96a0b8', whiteSpace: 'nowrap' }}>
+            {new Date(log.contactedAt).toLocaleDateString('zh-TW')}
+          </span>
+          <span style={tagStyle(typeColor(log.type))}>{typeLabel(log.type)}</span>
+          <span style={tagStyle(resultColor(log.result))}>{resultLabel(log.result)}</span>
+          <span style={{ color: '#2c3554' }}>{log.note}</span>
+        </div>
+      ))}
+    </div>
+  );
+}

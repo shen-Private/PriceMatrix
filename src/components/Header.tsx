@@ -30,6 +30,7 @@ function Header() {
     { label: '報價單', path: '/quotes', action: 'view_pricing' as const },
     { label: '訂單管理', path: '/orders', action: 'view_pricing' as const },
     { label: '客戶管理', path: '/customers', action: 'view_customers' as const },
+    { label: '潛在客戶', path: '/prospects', action: 'view_customers' as const },
   ];
 
   const menuLinks = [

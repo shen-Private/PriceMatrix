@@ -3,6 +3,7 @@ import axios from 'axios';
 import styles from './InventoryPanel.module.css';
 import React from 'react';
 import { useAuth } from '../../AuthContext';
+import { useSearchParams } from 'react-router-dom';
 const API_URL = import.meta.env.VITE_API_URL ?? '';
 axios.defaults.withCredentials = true;
 // ===== 型別定義 =====
@@ -95,6 +96,8 @@ function InventoryPanel() {
   const [filterType, setFilterType] = useState<StockType | ''>('');
   const [filterManufacturer, setFilterManufacturer] = useState<number | null>(null);
   const [manufacturers, setManufacturers] = useState<{ id: number; name: string }[]>([]);
+  const [searchParams] = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') ?? '');
   const { can } = useAuth();
   const canSetSafetyStock = can('set_safety_stock');
 
@@ -258,6 +261,10 @@ function InventoryPanel() {
     if (filterType && i.item.stockType !== filterType) return false;
     if (filterManufacturer && i.item.product?.manufacturer?.id !== filterManufacturer) return false;
     if (filterCategory && i.item.product?.category?.name !== filterCategory) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      if (!i.item.product?.name?.toLowerCase().includes(q)) return false;
+    }
     return true;
   });
   // ===== 庫存狀態顯示 =====

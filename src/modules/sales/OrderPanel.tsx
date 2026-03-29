@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-
+import { useSearchParams } from 'react-router-dom';
 const API = import.meta.env.VITE_API_URL ?? '';
 
 const CARRIERS = ['ヤマト運輸', '佐川急便', '福山通運'];
@@ -42,6 +42,8 @@ const statusColor: Record<string, string> = {
 export default function OrderPanel() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [shipments, setShipments] = useState<Record<number, Shipment[]>>({});
+    const [searchParams] = useSearchParams();
+    const [searchQuery, setSearchQuery] = useState(searchParams.get('q') ?? '');
     const [expanded, setExpanded] = useState<number | null>(null);
 
     // 出貨單表單
@@ -87,8 +89,18 @@ export default function OrderPanel() {
         setShipments(prev => ({ ...prev, [orderId]: res.data }));
         loadOrders(); // 訂單狀態可能變 COMPLETED
     };
-
+    const filteredOrders = orders.filter(o => {
+        // console.log('searchQuery:', JSON.stringify(searchQuery));
+        console.log('orders:', orders.length);
+        if (!searchQuery.trim()) return true;
+        const q = searchQuery.toLowerCase();
+        return (
+            o.customer.name?.toLowerCase().includes(q) ||
+            String(o.id).includes(q)
+        );
+    });
     return (
+
         <div style={{ padding: '24px', maxWidth: '960px', margin: '0 auto' }}>
             <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#2c3554', marginBottom: '20px' }}>
                 訂單管理
@@ -101,9 +113,10 @@ export default function OrderPanel() {
                             <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600 }}>{h}</th>
                         ))}
                     </tr>
+
                 </thead>
                 <tbody>
-                    {orders.map(o => {
+                    {filteredOrders.map(o => {
                         const total = o.quote.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
                         const isExpanded = expanded === o.id;
                         return (

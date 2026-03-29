@@ -12,6 +12,8 @@ import QuotePanel from './modules/sales/QuotePanel';
 import CustomerPanel from './modules/sales/CustomerPanel';
 import OrderPanel from './modules/sales/OrderPanel';
 import ProspectPanel from './modules/sales/ProspectPanel';
+
+
 function LoginForm() {
   const { login } = useAuth();
   const [username, setUsername] = useState('');
@@ -112,6 +114,7 @@ function AppRoutes() {
         {can('view_customers') && <Route path="/customers" element={<CustomerPanel />} />}
         {can('view_customers') && <Route path="/prospects" element={<ProspectPanel />} />}
         {can('view_pricing') && <Route path="/orders" element={<OrderPanel />} />}
+        
         <Route path="*" element={<Navigate to={defaultPath} replace />} />
       </Routes>
     </>

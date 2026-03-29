@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../AuthContext';
 import React from 'react';
+import { useSearchParams } from 'react-router-dom';
 const API = import.meta.env.VITE_API_URL ?? '';
 
 interface Customer {
@@ -59,6 +60,8 @@ const empty = (): Omit<Customer, 'id'> => ({
 
 export default function CustomerPanel() {
   const { can } = useAuth();
+  const [searchParams] = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') ?? '');
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState<Customer | null>(null);
@@ -79,7 +82,16 @@ export default function CustomerPanel() {
     const res = await axios.get(`${API}/api/customers`);
     setCustomers(res.data);
   };
-
+  const filteredCustomers = customers.filter(c => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      c.name?.toLowerCase().includes(q) ||
+      c.contactPerson?.toLowerCase().includes(q) ||
+      c.email?.toLowerCase().includes(q) ||
+      c.phone?.includes(q)
+    );
+  });
   useEffect(() => { fetchCustomers(); }, []);
   const fetchContactLogs = async (customerId: number) => {
     const res = await axios.get(`${API}/api/contact-logs/customer/${customerId}`);
@@ -197,18 +209,24 @@ export default function CustomerPanel() {
           </button>
         )}
       </div>
-
+      <input
+        type="text"
+        placeholder="搜尋客戶名稱、聯絡人、email、電話..."
+        value={searchQuery}
+        onChange={e => setSearchQuery(e.target.value)}
+        style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #dde3f0', fontSize: '13px', width: '280px' }}
+      />
       {/* 客戶列表 */}
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
         <thead>
           <tr style={{ backgroundColor: '#f4f6fb', color: '#5a6480' }}>
-            {['客戶名稱', '聯絡人', '電話', 'Email', '地址', '上層客戶', ''].map(h => (
+            {['客戶名稱', '聯絡人', '電話', 'Email', '地址', '所屬集團', ''].map(h => (
               <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600 }}>{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {customers.map(c => (
+          {filteredCustomers.map(c => (
             <React.Fragment key={c.id}>
               <tr
                 style={{ borderBottom: '1px solid #eef0f6', backgroundColor: c.active ? undefined : '#f9f9f9', opacity: c.active ? 1 : 0.6, cursor: 'pointer' }}
@@ -451,7 +469,7 @@ export default function CustomerPanel() {
                 <input style={inputStyle} value={form.address}
                   onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />
               </Field>
-              <Field label="上層客戶">
+              <Field label="所屬集團">
                 <select style={inputStyle}
                   value={form.parent?.id ?? ''}
                   onChange={e => {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import styles from './QuotePanel.module.css';
-
+import { useSearchParams } from 'react-router-dom';
 const API = import.meta.env.VITE_API_URL ?? '';
 
 interface Customer { id: number; name: string; }
@@ -43,6 +43,12 @@ const QuotePanel: React.FC = () => {
     const [note, setNote] = useState('');
     const [items, setItems] = useState<QuoteItem[]>([{ productId: 0, quantity: 1, unitPrice: 0, basePrice: 0 }]);
     const [editingId, setEditingId] = useState<number | null>(null);
+    const [searchParams] = useSearchParams();
+    const [searchQuery, setSearchQuery] = useState(searchParams.get('q') ?? '');
+    const filteredQuotes = quotes.filter(q => {
+        if (!searchQuery.trim()) return true;
+        return String(q.id).includes(searchQuery.trim());
+    });
     const loadQuotes = () => {
         axios.get(`${API}/api/quotes`).then(res => setQuotes(res.data));
     };
@@ -156,7 +162,7 @@ const QuotePanel: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {quotes.map(q => {
+                                {filteredQuotes.map(q => {
                                     const qTotal = q.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
                                     return (
                                         <tr key={q.id}>

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import GlobalSearch from './GlobalSearch';
 
 const roleLabel: Record<string, string> = {
   admin: '管理員', warehouse: '倉庫人員', sales: '業務', cs: 'CS',
@@ -65,6 +66,7 @@ function Header() {
       ))}
 
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <GlobalSearch />
         <span style={{ fontSize: '12px', color: '#96a0b8' }}>
           {roleLabel[role ?? ''] ?? role}
         </span>
@@ -82,7 +84,6 @@ function Header() {
             >
               ☰
             </button>
-
             {menuOpen && (
               <div style={{
                 position: 'absolute', right: 0, top: 'calc(100% + 8px)',

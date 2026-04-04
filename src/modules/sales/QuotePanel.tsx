@@ -220,6 +220,21 @@ const QuotePanel: React.FC = () => {
                                                             onClick={() => handleConvert(q.id)}
                                                             title="確認成立"
                                                         >✅</button>
+                                                    )}  
+                                                    {(q.status === 'SENT' || q.status === 'DRAFT') && (
+                                                        <button
+                                                            className={styles.btnIcon}
+                                                            onClick={async () => {
+                                                                const res = await axios.get(`/api/pdf/quote/${q.id}`, { responseType: 'blob' });
+                                                                const url = URL.createObjectURL(res.data);
+                                                                const a = document.createElement('a');
+                                                                a.href = url;
+                                                                a.download = `quote-${q.id}.pdf`;
+                                                                a.click();
+                                                                URL.revokeObjectURL(url);
+                                                            }}
+                                                            title="下載 PDF"
+                                                        >🖨️</button>
                                                     )}
                                                 </div>
                                             </td>

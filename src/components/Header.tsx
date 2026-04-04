@@ -26,12 +26,16 @@ function Header() {
   }, []);
 
   const mainLinks = [
-    { label: '折扣管理', path: '/pricing', action: 'view_pricing' as const },
-    { label: '庫存總覽', path: '/inventory', action: 'view_inventory' as const },
-    { label: '報價單', path: '/quotes', action: 'view_pricing' as const },
-    { label: '訂單管理', path: '/orders', action: 'view_pricing' as const },
     { label: '客戶管理', path: '/customers', action: 'view_customers' as const },
     { label: '潛在客戶', path: '/prospects', action: 'view_customers' as const },
+    { label: '---' },  // 分隔符
+    { label: '折扣管理', path: '/pricing', action: 'view_pricing' as const },
+    { label: '報價單', path: '/quotes', action: 'view_pricing' as const },
+    { label: '訂單管理', path: '/orders', action: 'view_pricing' as const },
+    { label: '---' },  // 分隔符
+    { label: '改善提案', path: '/improvements', action: 'view_customers' as const },
+    { label: '---' },  // 分隔符
+    { label: '庫存總覽', path: '/inventory', action: 'view_inventory' as const },
   ];
 
   const menuLinks = [
@@ -40,7 +44,7 @@ function Header() {
 
   ];
 
-  const visibleMain = mainLinks.filter(l => can(l.action));
+  const visibleMain = mainLinks.filter(l => !l.action || can(l.action));
   const visibleMenu = menuLinks.filter(l => can(l.action));
 
   return (
@@ -50,20 +54,31 @@ function Header() {
       borderBottom: '1px solid #e0e6f0',
       position: 'sticky', top: 0, zIndex: 100,
     }}>
-      {visibleMain.map(link => (
-        <button
-          key={link.path}
-          onClick={() => navigate(link.path)}
-          style={{
-            padding: '8px 16px', borderRadius: '6px', border: 'none',
-            cursor: 'pointer', fontSize: '13px', fontWeight: 500,
-            backgroundColor: location.pathname === link.path ? '#4a78c4' : 'transparent',
-            color: location.pathname === link.path ? '#fff' : '#5a6480',
-          }}
-        >
-          {link.label}
-        </button>
-      ))}
+      {visibleMain.map((link, index) => {
+        if (link.label === '---') {
+          return (
+            <span key={index} style={{
+              width: '1px', height: '20px',
+              backgroundColor: '#e0e6f0',
+              margin: '0 4px',
+            }} />
+          );
+        }
+        return (
+          <button
+            key={link.path}
+            onClick={() => navigate(link.path!)}
+            style={{
+              padding: '8px 16px', borderRadius: '6px', border: 'none',
+              cursor: 'pointer', fontSize: '13px', fontWeight: 500,
+              backgroundColor: location.pathname === link.path ? '#4a78c4' : 'transparent',
+              color: location.pathname === link.path ? '#fff' : '#5a6480',
+            }}
+          >
+            {link.label}
+          </button>
+        );
+      })}
 
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px' }}>
         <GlobalSearch />

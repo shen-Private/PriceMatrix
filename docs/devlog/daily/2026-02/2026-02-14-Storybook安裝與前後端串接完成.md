@@ -1,0 +1,306 @@
+═══════════════════════════════════════════════════════════════════
+🔖 PriceMatrix 学习进度卡  - 下次对话请贴这个给 Claude
+═══════════════════════════════════════════════════════════════════
+
+📅 最后更新: 2026-02-14 (前後端串接完成！GET /customers 成功)
+上次做到：四個實體的三層架構全部完成，後端 API 全部通
+下一步：Storybook 做左右分割佈局（左：搜尋+分類篩選，右：折扣清單）
+待解決：無
+
+---
+
+## 📊 快速进度摘要
+整體進度: [████████████████░░░░] 80%
+
+已完成:
+✓ 資料庫 ER 圖設計
+✓ 泳道圖架構規劃
+✓ 技術棧確定
+✓ 後端環境準備 100%
+✓ 第一個 REST API 完成
+✓ Service 層開發完成
+✓ Repository 層完成
+✓ 資料庫整合完成（H2）
+✓ Package 和 Import 深入理解
+✓ Node.js + npm 安裝
+✓ React 專案創建
+✓ 第一個自訂元件（CustomerSearch）
+✓ State、Props、事件處理
+✓ Storybook 安裝與啟動 
+✓ CustomerSearch Story 建立 
+✓ CustomerRepository 建立 
+✓ CustomerService 建立 
+✓ CustomerController 建立（含 CORS）
+✓ 前後端完整串接（GET /customers） 
+✓ CategoryRepository + CategoryService + CategoryController ← 今天完成
+✓ ProductRepository + ProductService + ProductController ← 今天完成
+✓ DiscountRepository + DiscountService + DiscountController ← 今天完成
+✓ 後端四個實體 API 全部通（/customers /categories /products /discounts）
+
+正在進行:
+▶ 自己完成 Category、Product、Discount 三層架構
+
+下一步:
+□ CategoryRepository + CategoryService + CategoryController
+□ ProductRepository + ProductService + ProductController
+□ DiscountRepository + DiscountService + DiscountController
+□ 測試 /categories、/products、/discounts API
+
+---
+
+## ✅ 今日完成總結（2026-02-12）
+
+### 重大突破：前後端完整串接！
+
+**完成的功能：**
+1. ✅ Storybook 安裝（v10.2.8）
+2. ✅ CustomerSearch.stories.js 建立
+3. ✅ 理解 Story = 元件的狀態快照
+4. ✅ 建立 CustomerRepository（JPA Interface）
+5. ✅ 建立 CustomerService
+6. ✅ 建立 CustomerController（含 @CrossOrigin CORS 設定）
+7. ✅ GET /customers 回傳真實資料
+8. ✅ React 畫面顯示後端客戶列表
+
+**踩過的坑：**
+- 後端專案有兩個（pricematrix 空殼 + pricematrix-backend 正式）
+  → 正式專案在 pricematrix-backend，之後記得用這個
+- npm 指令要先 cd 進專案資料夾才能執行
+  → 每次開新 CMD 都要先 cd
+- Service 和 Controller 的 package 第一行寫成 package service / package controller
+  → 正確寫法：package com.pricematrix.pricematrix.service（完整路徑）
+- RequestMapping 路由大小寫錯（/Categorys）
+  → REST API 慣例：全小寫複數（/categories）
+
+**資料流完整路徑（今天理解的）：**
+data.sql（測試資料）
+    ↓ Spring Boot 啟動時自動執行
+H2 記憶體資料庫
+    ↓
+CustomerRepository.findAll()
+    ↓
+CustomerService.getAllCustomers()
+    ↓
+CustomerController GET /customers
+    ↓ JSON 回應
+React useEffect → axios.get()
+    ↓
+setCustomers(response.data)
+    ↓
+畫面自動更新顯示客戶列表
+
+**專案結構現況：**
+pricematrix-backend/src/main/java/com/pricematrix/pricematrix/
+├── entity/
+│   ├── Customer.java    ✅
+│   ├── Category.java    ✅
+│   ├── Product.java     ✅
+│   └── Discount.java    ✅
+├── repository/
+│   └── CustomerRepository.java  ✅（其他三個待建）
+├── service/
+│   └── CustomerService.java     ✅（其他三個待建）
+├── controller/
+│   └── CustomerController.java  ✅（其他三個待建）
+└── PricematrixApplication.java
+
+pricematrix/src/（前端）
+├── CustomerSearch.js    ✅
+├── stories/
+│   └── CustomerSearch.stories.js  ✅
+└── App.js
+
+---
+
+## 📐 完整架構設想（目標架構）
+
+### 理想的完整架構
+【前端】
+1. 使用者動作（View/Component）
+   ↓
+2. 狀態管理（Store/Action）
+   ↓
+   HTTP 請求（跨網路）
+   ↓
+【後端】
+3. Controller
+   ↓
+4. Service
+   ↓
+5. Repository（Mapper/DAO）
+   ↓
+6. Entity（Model）
+   ↓
+【資料庫】
+
+### 目前實作狀態
+【前端】目前進度：80%
+✅ 1. Component（CustomerSearch + Storybook）
+⏸️ 2. 狀態管理（暫用 useState，未來用 Context API）
+✅ 3. HTTP 請求（axios + useEffect 完成）
+
+【後端】目前進度：Customer 100% / 其他 25%
+✅ Controller（CustomerController）
+✅ Service（CustomerService）
+✅ Repository（CustomerRepository）
+✅ Entity（全部四個）
+✅ Database（H2 + data.sql）
+❌ Category / Product / Discount 三層待完成
+
+---
+
+## 🧠 核心概念已理解
+
+### 今天新增
+
+#### 1. Storybook 的定位
+Storybook ≠ 正式 App
+Storybook = 元件的活文件
+
+特點：
+├─ 獨立伺服器（localhost:6006）
+├─ 不依賴後端
+├─ 每個 Story = 元件的一種狀態
+└─ Controls 面板可以即時改 Props
+
+#### 2. data.sql 的角色
+data.sql = 測試資料初始化腳本
+
+時機：Spring Boot 啟動時自動執行
+特性：H2 是記憶體資料庫，重啟後資料重置
+未來：換成 MySQL 後，data.sql 移除，改用真實資料
+
+#### 3. CORS 是什麼
+問題：前端（:3000）呼叫後端（:8080）= 跨域請求
+瀏覽器預設會擋掉
+解法：@CrossOrigin(origins = "http://localhost:3000")
+意思：告訴瀏覽器「這個來源是被允許的」
+
+#### 4. Interface vs Class（Java）
+Interface = 規格書（定義能做什麼）
+Class = 實作（真正執行）
+
+CustomerRepository：
+你只寫 Interface（規格）
+Spring JPA 自動幫你實作（findAll, save, delete...）
+
+### 之前學的（保留）
+
+#### Java vs JDK vs Spring Boot
+Java        → PHP 語言
+JDK         → PHP 安裝包
+Spring Boot → WordPress
+
+#### 四層架構
+前端 (React + TS)
+    ↓
+Controller (接收/響應層)
+    ↓
+Service (業務邏輯層)
+    ↓
+Repository (持久化層)
+    ↓
+資料庫 (H2 → 未來換 MySQL)
+
+#### Package 和 Import
+package = 檔案的地址（不是渲染開關）
+import  = 告訴 Java 去哪找類別
+
+---
+
+## 🎯 下次對話要做的事
+
+Storybook 做左右分割佈局
+├─ 左側：搜尋輸入框 + 分類篩選
+└─ 右側：折扣清單表格（商品名稱、原價、折扣、折後）
+
+---
+
+## 💡 重要心法記錄
+
+### 金句
+> "前端就是我的生態圈
+   腦袋的壓力沒有很大，很舒服"
+
+> "React 的核心優勢不是能做什麼
+   而是怎麼組織 code"
+
+> "npm 不是工具庫
+   npm 是下載工具的工具"
+
+> "慢慢來，比較快
+   理解了，才算學會"
+
+> "Package 不是渲染開關
+   Package 是檔案的地址"
+
+> "三層架構現在看起來多餘
+   但未來加邏輯的時候就值了"  ← 今天新增
+
+### 開發策略
+✓ 本地開發優先（不急著上雲端）
+✓ 先後端再前端
+✓ 先做出功能，再追求完美
+✓ H2 內嵌資料庫 → 之後換 MySQL
+✓ 這是學習專案，沒有時程壓力
+✓ 遇到問題先嘗試，卡住再問
+✓ GitHub 等 MVP 完成再上傳
+
+---
+
+## 🎯 核心功能清單
+
+### MVP（第一版）
+□ 查詢客戶的所有折扣
+  └─ 前端：CustomerSearch ✅
+  └─ 後端：GET /customers ✅
+  └─ 串接：✅ 完成！
+  └─ 顯示折扣資料：待開發
+
+□ 修正單一折扣
+  └─ 待開發
+
+□ 基本的紀錄追蹤
+  └─ 待開發
+
+### 第二階段
+□ 批次修正折扣
+□ 同分類複數客戶的批次修正
+□ Log 查詢介面
+
+---
+
+## ⚠️ Claude 請注意
+
+### 教學風格
+1. 執行模式：先給指令 → 執行 → 完成後問要不要解釋
+2. 每個步驟解釋「為什麼」
+3. Code 要有詳細註解
+4. 用比喻幫助理解（尤其是 WordPress 類比）
+5. 漸進式教學
+6. 前端學習節奏比後端輕鬆
+
+### 回覆格式
+- 技術概念用中文
+- 避免純英文術語
+- 給範例時說明用途
+- 用圖表或 ASCII art 輔助
+- 直接給內容，不要生成檔案
+
+### 重要提醒
+- 後端專案路徑：C:\Users\vcd52\IdeaProjects\pricematrix-backend\pricematrix
+- 前端專案路徑：C:\Users\vcd52\IdeaProjects\pricematrix
+- 每次開 CMD 都要先 cd 進專案資料夾
+
+---
+
+## 📝 日志管理方式
+
+### 保存位置
+PriceMatrix/
+└── docs/
+    └── learning-logs/
+        ├── 2026-01-31-环境准备与架构确认.md  ✓
+        ├── 2026-02-01-环境安装与Spring Boot初体验.md  ✓
+        ├── 2026-02-01-Service层开发与数据库整合.md  ✓
+        └── 2026-02-12-Storybook安裝與前後端串接完成.md  ✓ (今天)

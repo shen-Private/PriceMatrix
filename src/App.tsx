@@ -14,7 +14,26 @@ import CustomerPanel from './modules/sales/CustomerPanel';
 import OrderPanel from './modules/sales/OrderPanel';
 import ProspectPanel from './modules/sales/ProspectPanel';
 import ImprovementPanel from './modules/improvement/ImprovementPanel';
+import './styles/globalLoading.css';
+import axios from 'axios';
 
+const bar = document.createElement('div');
+bar.className = 'loading-bar';
+bar.textContent = 'Loading...';
+document.body.appendChild(bar);
+
+let count = 0;
+
+axios.interceptors.request.use(config => {
+  count++;
+  bar.classList.add('visible');
+  return config;
+});
+
+axios.interceptors.response.use(
+  res => { if (--count === 0) bar.classList.remove('visible'); return res; },
+  err => { if (--count === 0) bar.classList.remove('visible'); return Promise.reject(err); }
+);
 function LoginForm() {
   const { login } = useAuth();
   const [username, setUsername] = useState('');

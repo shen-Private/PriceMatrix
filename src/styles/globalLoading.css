@@ -1,0 +1,18 @@
+.loading-bar {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #1e2740;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+.loading-bar.visible {
+  opacity: 1;
+}

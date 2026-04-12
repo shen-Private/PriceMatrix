@@ -19,7 +19,7 @@ import axios from 'axios';
 
 const bar = document.createElement('div');
 bar.className = 'loading-bar';
-bar.textContent = 'Loading...';
+bar.textContent = '読み込み中…';
 document.body.appendChild(bar);
 
 let count = 0;

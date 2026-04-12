@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth, Role } from './AuthContext';
 import Header from './components/Header';
+import HelpPanel from './components/Helppanel';
 import DiscountPanel from './modules/pricing/DiscountPanel';
 import InventoryPanel from './modules/inventory/InventoryPanel';
 import ScanPanel from './modules/inventory/ScanPanel';
@@ -115,6 +116,7 @@ function AppRoutes() {
         {can('view_customers') && <Route path="/prospects" element={<ProspectPanel />} />}
         {can('view_pricing') && <Route path="/orders" element={<OrderPanel />} />}
         <Route path="/improvements" element={<ImprovementPanel />} />
+        <Route path="/help" element={<HelpPanel />} />          {/* ← 追加 */}
         <Route path="*" element={<Navigate to={defaultPath} replace />} />
       </Routes>
     </>

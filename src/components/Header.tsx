@@ -2,9 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import GlobalSearch from './GlobalSearch';
-
 const roleLabel: Record<string, string> = {
-  admin: '管理員', warehouse: '倉庫人員', sales: '業務', cs: 'CS',
+  admin: '管理者', warehouse: '倉庫担当', sales: '営業', cs: 'CS',
 };
 
 function Header() {
@@ -14,7 +13,6 @@ function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // 點選選單外側自動關閉
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -26,22 +24,22 @@ function Header() {
   }, []);
 
   const mainLinks = [
-    { label: '客戶管理', path: '/customers', action: 'view_customers' as const },
-    { label: '潛在客戶', path: '/prospects', action: 'view_customers' as const },
-    { label: '---' },  // 分隔符
-    { label: '折扣管理', path: '/pricing', action: 'view_pricing' as const },
-    { label: '報價單', path: '/quotes', action: 'view_pricing' as const },
-    { label: '訂單管理', path: '/orders', action: 'view_pricing' as const },
-    { label: '---' },  // 分隔符
+    { label: '顧客管理', path: '/customers', action: 'view_customers' as const },
+    { label: '見込み客', path: '/prospects', action: 'view_customers' as const },
+    { label: '---' },
+    { label: '割引管理', path: '/pricing', action: 'view_pricing' as const },
+    { label: '見積書', path: '/quotes', action: 'view_pricing' as const },
+    { label: '受注管理', path: '/orders', action: 'view_pricing' as const },
+    { label: '---' },
     { label: '改善提案', path: '/improvements', action: 'view_customers' as const },
-    { label: '---' },  // 分隔符
-    { label: '庫存總覽', path: '/inventory', action: 'view_inventory' as const },
-  ];
+    { label: '---' },
+    { label: '在庫一覧', path: '/inventory', action: 'view_inventory' as const },
+    { label: '---' },
+    { label: 'ヘルプ', path: '/help', action: 'view_customers' as const },];
 
   const menuLinks = [
-    { label: '商品主檔管理', path: '/admin/products', action: 'manage_users' as const },
-    { label: '公司內部帳號管理', path: '/admin/users', action: 'manage_users' as const },
-
+    { label: '商品マスタ管理', path: '/admin/products', action: 'manage_users' as const },
+    { label: '社内アカウント管理', path: '/admin/users', action: 'manage_users' as const },
   ];
 
   const visibleMain = mainLinks.filter(l => !l.action || can(l.action));
@@ -86,7 +84,6 @@ function Header() {
           {roleLabel[role ?? ''] ?? role}
         </span>
 
-        {/* 漢堡排選單 */}
         {visibleMenu.length > 0 && (
           <div ref={menuRef} style={{ position: 'relative' }}>
             <button
@@ -133,7 +130,7 @@ function Header() {
             cursor: 'pointer', fontSize: '12px', color: '#5a6480', backgroundColor: '#fff',
           }}
         >
-          登出
+          ログアウト
         </button>
       </div>
     </nav>

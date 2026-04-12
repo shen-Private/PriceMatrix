@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import axios from 'axios';
-
+import shared from '../../styles/shared.module.css';
 const API_URL = import.meta.env.VITE_API_URL ?? '';
 
 interface Transaction {
@@ -25,16 +25,16 @@ function TransactionHistory() {
         try {
             const res = await axios.get(`${API_URL}/api/inventory/transactions/item/${itemId}`);
             setTransactions(res.data);
-            setMessage(res.data.length === 0 ? '查無記錄' : '');
+            setMessage(res.data.length === 0 ? '記録が見つかりません' : '');
         } catch {
-            setMessage('查詢失敗');
+            setMessage('検索に失敗しました');
             setTransactions([]);
         }
     };
 
     return (
         <div style={{ padding: '32px', maxWidth: '640px', margin: '0 auto' }}>
-            <h2 style={{ marginBottom: '24px' }}>入出庫歷史</h2>
+            <h2 style={{ marginBottom: '24px' }}>入出庫履歴</h2>
 
             <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
                 <input
@@ -42,13 +42,13 @@ function TransactionHistory() {
                     value={itemId}
                     onChange={e => setItemId(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                    placeholder="輸入商品 ID"
+                    placeholder="商品 ID を入力"
                 />
                 <button
                     onClick={handleSearch}
                     style={{ padding: '10px 16px', backgroundColor: '#4a78c4', color: '#fff', border: 'none', borderRadius: '7px', cursor: 'pointer' }}
                 >
-                    查詢
+                    検索
                 </button>
             </div>
 
@@ -59,7 +59,7 @@ function TransactionHistory() {
             {transactions.length > 0 && (
                 <div>
                     <div style={{ fontSize: '13px', color: '#5a6480', marginBottom: '12px' }}>
-                        {transactions[0].item.product.name}　共 {transactions.length} 筆
+                        {transactions[0].item.product.name}　全 {transactions.length} 件
                     </div>
                     {transactions.map(tx => (
                         <div key={tx.id} style={{

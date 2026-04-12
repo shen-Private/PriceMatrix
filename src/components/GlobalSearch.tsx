@@ -59,7 +59,7 @@ export default function GlobalSearch() {
             <input
                 className={styles.input}
                 type="text"
-                placeholder="搜尋客戶、報價單、商品..."
+                placeholder="顧客名、見積書、商品..."
                 value={query}
                 onChange={handleChange}
             />
@@ -74,8 +74,8 @@ export default function GlobalSearch() {
                                 onClick={() => setActiveTab(tab)}
                             >
                                 {tab === 'all' && `全部 (${total})`}
-                                {tab === 'customers' && `客戶 (${results.customers.length})`}
-                                {tab === 'quotes' && `報價單 (${results.quotes.length})`}
+                                {tab === 'customers' && `顧客 (${results.customers.length})`}
+                                {tab === 'quotes' && `見積書 (${results.quotes.length})`}
                                 {tab === 'products' && `商品 (${results.products.length})`}
                             </button>
                         ))}
@@ -85,14 +85,14 @@ export default function GlobalSearch() {
                     <div className={styles.list}>
                         {(activeTab === 'all' || activeTab === 'customers') && results.customers.map(c => (
                             <div key={`c-${c.id}`} className={styles.item} onClick={() => handleSelect('customer', c.id, c.name)}>
-                                <span className={styles.badge}>客戶</span>
+                                <span className={styles.badge}>顧客</span>
                                 <span>{c.name}</span>
                                 {c.contactPerson && <span className={styles.sub}>{c.contactPerson}</span>}
                             </div>
                         ))}
                         {(activeTab === 'all' || activeTab === 'quotes') && results.quotes.map(q => (
                             <div key={`q-${q.id}`} className={styles.item} onClick={() => handleSelect('quote', q.id, String(q.id))}>
-                                <span className={styles.badge}>報價單</span>
+                                <span className={styles.badge}>見積書</span>
                                 <span>Q#{q.id}</span>
                                 <span className={styles.sub}>{q.status}</span>
                             </div>

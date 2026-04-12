@@ -6,10 +6,10 @@ const API_URL = import.meta.env.VITE_API_URL;
 type StockType = 'internal' | 'outsource_infinite' | 'outsource_warehouse' | 'outsource_dropship';
 
 const stockTypeLabels: Record<StockType, string> = {
-    internal: '自社庫存',
-    outsource_infinite: '委外常備',
-    outsource_warehouse: '委外經倉',
-    outsource_dropship: '委外直送',
+    internal: '自社在庫',
+    outsource_infinite: '外注常備',
+    outsource_warehouse: '外注倉庫',
+    outsource_dropship: '外注直送',
 };
 
 interface Category { id: number; name: string; }
@@ -55,7 +55,7 @@ function ProductMasterPanel() {
 
     const handleSubmit = async () => {
         if (!form.productName || !form.basePrice || !form.categoryId || !form.unit) {
-            showToast('請填寫必填欄位', 'error');
+            showToast('必須項目を入力してください', 'error');
             return;
         }
 
@@ -71,28 +71,28 @@ function ProductMasterPanel() {
                 unit: form.unit,
                 safetyStock: form.safetyStock ? parseInt(form.safetyStock) : null,
             });
-            showToast('商品新增成功', 'success');
+            showToast('商品を追加しました', 'success');
             setForm(defaultForm);
         } catch {
-            showToast('新增失敗', 'error');
+            showToast('追加に失敗しました', 'error');
         } finally {
             setLoading(false);
         }
     };
     const handleConfirm = async (id: number) => {
         if (!pendingForm.basePrice || !pendingForm.categoryId || !pendingForm.unit) {
-            showToast('請填寫必填欄位', 'error');
+            showToast('必須項目を入力してください', 'error');
             return;
         }
         setConfirmingId(id);
         try {
-            // 1. 更新 pricing_products
+            // 1. pricing_products を更新
             await axios.put(`${API_URL}/api/products/${id}`, {
                 name: pendingForm.name,
                 basePrice: parseFloat(pendingForm.basePrice),
                 categoryId: parseInt(pendingForm.categoryId),
             });
-            // 2. 建立 inventory_item
+            // 2. inventory_item を作成
             await axios.post(`${API_URL}/api/inventory/items`, {
                 productName: pendingForm.name,
                 basePrice: parseFloat(pendingForm.basePrice),
@@ -106,9 +106,9 @@ function ProductMasterPanel() {
             await axios.put(`${API_URL}/api/products/${id}/confirm`);
             setPendingProducts(prev => prev.filter(p => p.id !== id));
             setEditingPending(null);
-            showToast('商品已確認並建檔', 'success');
+            showToast('商品を確認・登録しました', 'success');
         } catch {
-            showToast('確認失敗', 'error');
+            showToast('確認に失敗しました', 'error');
         } finally {
             setConfirmingId(null);
         }
@@ -130,12 +130,12 @@ function ProductMasterPanel() {
     return (
         <div style={{ maxWidth: '560px', margin: '40px auto', padding: '0 24px' }}>
             <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#2c3554', marginBottom: '24px' }}>
-                商品主檔管理
+                商品マスタ管理
             </h2>
             {pendingProducts.length > 0 && (
                 <div style={{ backgroundColor: '#fffbea', border: '1px solid #f0c040', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
                     <div style={{ fontSize: '14px', fontWeight: 600, color: '#7a5c00', marginBottom: '12px' }}>
-                        ⚠ 待確認商品（{pendingProducts.length} 筆）
+                        ⚠ 確認待ち商品（{pendingProducts.length} 件）
                     </div>
                     {pendingProducts.map(p => (
                         <div key={p.id} style={{ padding: '10px 0', borderBottom: '1px solid #f0e090' }}>
@@ -143,7 +143,7 @@ function ProductMasterPanel() {
                                 <div style={{ flex: 1 }}>
                                     <div style={{ fontSize: '13px', fontWeight: 500 }}>{p.name}</div>
                                     <div style={{ fontSize: '11px', color: '#96a0b8', marginTop: '2px' }}>
-                                        {p.manufacturer?.name ?? '廠商未設定'}
+                                        {p.manufacturer?.name ?? 'メーカー未設定'}
                                     </div>
                                 </div>
                                 <button
@@ -153,30 +153,30 @@ function ProductMasterPanel() {
                                     }}
                                     style={{ padding: '6px 14px', borderRadius: '6px', border: '1px solid #4a78c4', backgroundColor: '#fff', color: '#4a78c4', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
                                 >
-                                    {editingPending === p.id ? '收起' : '補齊資料'}
+                                    {editingPending === p.id ? '閉じる' : '情報を入力'}
                                 </button>
                             </div>
 
                             {editingPending === p.id && (
                                 <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                    {field('商品名稱', true,
+                                    {field('商品名', true,
                                         <input style={inputStyle} value={pendingForm.name}
                                             onChange={e => setPendingForm(prev => ({ ...prev, name: e.target.value }))}
-                                            placeholder="商品名稱" />
+                                            placeholder="商品名" />
                                     )}
-                                    {field('定價', true,
+                                    {field('定価', true,
                                         <input style={inputStyle} type="number" value={pendingForm.basePrice}
                                             onChange={e => setPendingForm(prev => ({ ...prev, basePrice: e.target.value }))}
                                             placeholder="例：1200" />
                                     )}
-                                    {field('分類', true,
+                                    {field('カテゴリ', true,
                                         <select style={inputStyle} value={pendingForm.categoryId}
                                             onChange={e => setPendingForm(prev => ({ ...prev, categoryId: e.target.value }))}>
-                                            <option value="">請選擇分類</option>
+                                            <option value="">カテゴリを選択</option>
                                             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                         </select>
                                     )}
-                                    {field('庫存形態', true,
+                                    {field('在庫形態', true,
                                         <select style={inputStyle} value={pendingForm.stockType}
                                             onChange={e => setPendingForm(prev => ({ ...prev, stockType: e.target.value as StockType }))}>
                                             {Object.entries(stockTypeLabels).map(([v, l]) =>
@@ -184,22 +184,22 @@ function ProductMasterPanel() {
                                             )}
                                         </select>
                                     )}
-                                    {field('單位', true,
+                                    {field('単位', true,
                                         <input style={inputStyle} value={pendingForm.unit}
                                             onChange={e => setPendingForm(prev => ({ ...prev, unit: e.target.value }))}
                                             placeholder="例：個 / 箱" />
                                     )}
-                                    {field('安全庫存', false,
+                                    {field('安全在庫', false,
                                         <input style={inputStyle} type="number" value={pendingForm.safetyStock}
                                             onChange={e => setPendingForm(prev => ({ ...prev, safetyStock: e.target.value }))}
-                                            placeholder="選填" />
+                                            placeholder="任意" />
                                     )}
                                     <button
                                         onClick={() => handleConfirm(p.id)}
                                         disabled={confirmingId === p.id}
                                         style={{ padding: '10px', borderRadius: '6px', border: 'none', backgroundColor: '#4a78c4', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', opacity: confirmingId === p.id ? 0.7 : 1 }}
                                     >
-                                        {confirmingId === p.id ? '確認中...' : '確認並建檔'}
+                                        {confirmingId === p.id ? '確認中...' : '確認・登録する'}
                                     </button>
                                 </div>
                             )}
@@ -213,35 +213,35 @@ function ProductMasterPanel() {
                 display: 'flex', flexDirection: 'column', gap: '18px',
             }}>
 
-                {field('商品名稱', true,
+                {field('商品名', true,
                     <input style={inputStyle} value={form.productName}
                         onChange={e => setForm(p => ({ ...p, productName: e.target.value }))}
                         placeholder="例：Canon PG-245" />
                 )}
 
-                {field('定價', true,
+                {field('定価', true,
                     <input style={inputStyle} type="number" value={form.basePrice}
                         onChange={e => setForm(p => ({ ...p, basePrice: e.target.value }))}
                         placeholder="例：1200" />
                 )}
 
-                {field('分類', true,
+                {field('カテゴリ', true,
                     <select style={inputStyle} value={form.categoryId}
                         onChange={e => setForm(p => ({ ...p, categoryId: e.target.value }))}>
-                        <option value="">請選擇分類</option>
+                        <option value="">カテゴリを選択</option>
                         {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                 )}
 
-                {field('廠商', false,
+                {field('メーカー', false,
                     <select style={inputStyle} value={form.manufacturerId}
                         onChange={e => setForm(p => ({ ...p, manufacturerId: e.target.value }))}>
-                        <option value="">請選擇廠商（選填）</option>
+                        <option value="">メーカーを選択（任意）</option>
                         {manufacturers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                     </select>
                 )}
 
-                {field('庫存形態', true,
+                {field('在庫形態', true,
                     <select style={inputStyle} value={form.stockType}
                         onChange={e => setForm(p => ({ ...p, stockType: e.target.value as StockType }))}>
                         {Object.entries(stockTypeLabels).map(([v, l]) =>
@@ -250,22 +250,22 @@ function ProductMasterPanel() {
                     </select>
                 )}
 
-                {field('條碼', false,
+                {field('バーコード', false,
                     <input style={inputStyle} value={form.barcode}
                         onChange={e => setForm(p => ({ ...p, barcode: e.target.value }))}
-                        placeholder="選填" />
+                        placeholder="任意" />
                 )}
 
-                {field('單位', true,
+                {field('単位', true,
                     <input style={inputStyle} value={form.unit}
                         onChange={e => setForm(p => ({ ...p, unit: e.target.value }))}
                         placeholder="例：個 / 箱 / 本" />
                 )}
 
-                {field('安全庫存', false,
+                {field('安全在庫', false,
                     <input style={inputStyle} type="number" value={form.safetyStock}
                         onChange={e => setForm(p => ({ ...p, safetyStock: e.target.value }))}
-                        placeholder="選填" />
+                        placeholder="任意" />
                 )}
 
                 <button
@@ -278,7 +278,7 @@ function ProductMasterPanel() {
                         opacity: loading ? 0.7 : 1,
                     }}
                 >
-                    {loading ? '新增中...' : '新增商品'}
+                    {loading ? '追加中...' : '商品を追加'}
                 </button>
             </div>
 

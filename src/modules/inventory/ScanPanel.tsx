@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { BrowserMultiFormatReader } from '@zxing/browser';
-
+import shared from '../../styles/shared.module.css';
 const API_URL = import.meta.env.VITE_API_URL ?? '';
 axios.defaults.withCredentials = true;
 
@@ -18,7 +18,7 @@ interface InventoryItem {
     barcode: string | null;
 }
 
-// 清單裡的一筆
+// リストの1件
 interface ScanEntry {
     item: InventoryItem;
     quantity: number;
@@ -29,7 +29,7 @@ type ScanMode = 'scan' | 'batch';
 function ScanPanel() {
     const [panelMode, setPanelMode] = useState<ScanMode>('scan');
 
-    // ===== 掃碼狀態 =====
+    // ===== スキャン状態 =====
     const [barcode, setBarcode] = useState('');
     const [message, setMessage] = useState('');
     const [scanning, setScanning] = useState(false);
@@ -38,20 +38,20 @@ function ScanPanel() {
     const hasScannedRef = useRef(false);
     const controlsRef = useRef<any>(null);
 
-    // ===== 累積清單 =====
+    // ===== 入庫リスト =====
     const [entries, setEntries] = useState<ScanEntry[]>([]);
     const [carrier, setCarrier] = useState('');
     const [operator, setOperator] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // ===== 簡易建檔表單 =====
+    // ===== 仮登録フォーム =====
     const [showQuickAdd, setShowQuickAdd] = useState(false);
     const [quickAddBarcode, setQuickAddBarcode] = useState('');
     const [quickAddName, setQuickAddName] = useState('');
     const [quickAddManufacturerId, setQuickAddManufacturerId] = useState<number | null>(null);
     const [manufacturers, setManufacturers] = useState<{ id: number; name: string }[]>([]);
 
-    // ===== 相機操作 =====
+    // ===== カメラ操作 =====
     const stopScan = () => {
         if (controlsRef.current) {
             controlsRef.current.stop();
@@ -98,7 +98,7 @@ function ScanPanel() {
                 );
                 controlsRef.current = controls;
             } catch (e) {
-                setMessage('無法開啟相機，請確認瀏覽器權限');
+                setMessage('カメラを起動できません。ブラウザの権限を確認してください');
                 setScanning(false);
             }
         }, 100);
@@ -110,7 +110,7 @@ function ScanPanel() {
     useEffect(() => {
         axios.get(`${API_URL}/api/manufacturers`).then(r => setManufacturers(r.data));
     }, []);
-    // ===== 條碼查詢 → 加入清單 =====
+    // ===== バーコード検索 → リストに追加 =====
     const searchByBarcode = async (code: string) => {
         if (!code.trim()) return;
         try {
@@ -119,7 +119,7 @@ function ScanPanel() {
             setMessage('');
             setBarcode('');
 
-            // 同一商品已在清單 → 數量 +1
+            // 同一商品がリストにある → 数量 +1
             setEntries(prev => {
                 const existing = prev.find(e => e.item.id === foundItem.id);
                 if (existing) {
@@ -144,7 +144,7 @@ function ScanPanel() {
         searchByBarcode(barcode);
     };
 
-    // 清單數量調整
+    // リスト数量調整
     const updateQuantity = (itemId: number, val: string) => {
         const n = parseInt(val, 10);
         if (isNaN(n) || n < 1) return;
@@ -153,15 +153,15 @@ function ScanPanel() {
         ));
     };
 
-    // 清單移除
+    // リストから削除
     const removeEntry = (itemId: number) => {
         setEntries(prev => prev.filter(e => e.item.id !== itemId));
     };
 
-    // ===== 送出（呼叫 batch API）=====
+    // ===== 送信（batch API 呼び出し）=====
     const handleSubmit = async () => {
-        if (!operator.trim()) { setMessage('請輸入操作者姓名'); return; }
-        if (entries.length === 0) { setMessage('清單是空的'); return; }
+        if (!operator.trim()) { setMessage('担当者名を入力してください'); return; }
+        if (entries.length === 0) { setMessage('リストが空です'); return; }
         setIsSubmitting(true);
         try {
             await axios.post(`${API_URL}/api/inventory/transactions/batch`, {
@@ -172,39 +172,39 @@ function ScanPanel() {
                     note: carrier || null,
                 })),
             });
-            setMessage('✓ 入庫完成');
+            setMessage('✓ 入庫完了');
             setEntries([]);
             setCarrier('');
         } catch (err: any) {
-            setMessage(err.response?.data || '送出失敗');
+            setMessage(err.response?.data || '送信に失敗しました');
         } finally {
             setIsSubmitting(false);
         }
     };
     const handleQuickAdd = async () => {
-        if (!quickAddName.trim()) { setMessage('請輸入商品名稱'); return; }
+        if (!quickAddName.trim()) { setMessage('商品名を入力してください'); return; }
         try {
-            // Step 1：建 pending product
+            // Step 1：pending product を作成
             const params = new URLSearchParams({ name: quickAddName });
             if (quickAddManufacturerId) params.append('manufacturerId', String(quickAddManufacturerId));
             const productRes = await axios.post(`${API_URL}/api/products/pending?${params}`);
             const productId = productRes.data.id;
 
-            // Step 2：建 inventory_item（含 barcode）
+            // Step 2：inventory_item を作成（barcode 付き）
             const itemParams = new URLSearchParams({
                 productId: String(productId),
                 barcode: quickAddBarcode
             });
             await axios.post(`${API_URL}/api/inventory/items/pending?${itemParams}`);
 
-            setMessage('✓ 已暫時建檔，待CS確認');
+            setMessage('✓ 仮登録しました。CS確認後に本登録されます');
             setShowQuickAdd(false);
             setBarcode('');
         } catch {
-            setMessage('建檔失敗');
+            setMessage('登録に失敗しました');
         }
     };
-    // ===== 共用樣式 =====
+    // ===== 共通スタイル =====
     const s = {
         wrap: { padding: '24px', maxWidth: '520px', margin: '0 auto', fontFamily: "'IBM Plex Sans JP', 'Noto Sans TC', sans-serif", fontSize: '14px', color: '#1e2740' } as React.CSSProperties,
         label: { display: 'block', marginBottom: '6px', fontSize: '12px', color: '#5a6480', fontWeight: 500 } as React.CSSProperties,
@@ -218,7 +218,7 @@ function ScanPanel() {
 
             {/* ===== ヘッダー ===== */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-                <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>掃碼入庫</h2>
+                <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>バーコードスキャン入庫</h2>
                 <button
                     onClick={() => setPanelMode(panelMode === 'scan' ? 'batch' : 'scan')}
                     style={{
@@ -228,31 +228,31 @@ function ScanPanel() {
                         color: panelMode === 'batch' ? '#2980b9' : '#5a6480',
                     }}
                 >
-                    📦 批次入庫
+                    📦 一括入庫
                 </button>
             </div>
 
-            {/* ===== 批次入庫モード（佔位） ===== */}
+            {/* ===== 一括入庫モード（プレースホルダー）===== */}
             {panelMode === 'batch' && (
                 <div style={{ textAlign: 'center', padding: '48px 24px', backgroundColor: '#f0f3f8', borderRadius: '10px', color: '#96a0b8', fontSize: '13px' }}>
                     <div style={{ fontSize: '32px', marginBottom: '12px' }}>🚧</div>
-                    視情況增加新功能！
+                    今後追加予定の機能です！
                 </div>
             )}
 
-            {/* ===== 掃碼入庫モード ===== */}
+            {/* ===== スキャン入庫モード ===== */}
             {panelMode === 'scan' && (
                 <>
-                    {/* 條碼輸入 */}
+                    {/* バーコード入力 */}
                     <div style={{ marginBottom: '16px' }}>
-                        <label style={s.label}>條碼</label>
+                        <label style={s.label}>バーコード</label>
                         <div style={{ display: 'flex', gap: '8px' }}>
                             <input
                                 style={{ ...s.input, flex: 1 }}
                                 value={barcode}
                                 onChange={e => setBarcode(e.target.value)}
                                 onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                                placeholder="輸入或掃描條碼"
+                                placeholder="バーコードを入力またはスキャン"
                             />
                             {barcode && (
                                 <button
@@ -260,17 +260,17 @@ function ScanPanel() {
                                     style={{ padding: '10px 12px', backgroundColor: '#fff', color: '#999', border: '1px solid #d0d7e8', borderRadius: '7px', cursor: 'pointer' }}
                                 >✕</button>
                             )}
-                            <button onClick={handleSearch} style={s.btnPrimary}>查詢</button>
+                            <button onClick={handleSearch} style={s.btnPrimary}>検索</button>
                         </div>
                     </div>
 
-                    {/* 相機 */}
+                    {/* カメラ */}
                     {!scanning ? (
                         <button
                             onClick={startScan}
                             style={{ width: '100%', padding: '10px', marginBottom: '16px', backgroundColor: '#fff', color: '#4a78c4', border: '2px solid #4a78c4', borderRadius: '7px', cursor: 'pointer', fontSize: '14px', fontWeight: 600 }}
                         >
-                            📷 開啟相機掃碼
+                            📷 カメラでスキャン
                         </button>
                     ) : (
                         <div style={{ marginBottom: '16px' }}>
@@ -279,46 +279,46 @@ function ScanPanel() {
                                 <div style={{ position: 'absolute', top: '50%', left: '10%', right: '10%', height: '2px', backgroundColor: '#e74c3c', boxShadow: '0 0 6px rgba(231,76,60,0.8)', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
                             </div>
                             <button onClick={stopScan} style={{ width: '100%', padding: '10px', marginTop: '8px', backgroundColor: '#fff', color: '#e74c3c', border: '2px solid #e74c3c', borderRadius: '7px', cursor: 'pointer', fontSize: '14px' }}>
-                                取消掃碼
+                                キャンセル
                             </button>
                         </div>
                     )}
 
-                    {/* 訊息 */}
+                    {/* メッセージ */}
                     {message && (
                         <div style={{ color: message.startsWith('✓') ? '#27ae60' : '#e74c3c', fontSize: '13px', marginBottom: '12px' }}>
                             {message}
                         </div>
                     )}
-                    {/* 簡易建檔表單 */}
+                    {/* 仮登録フォーム */}
                     {showQuickAdd && (
                         <div style={{ backgroundColor: '#fffbea', border: '1px solid #f0c040', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
                             <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '12px', color: '#7a5c00' }}>
-                                ⚠ 找不到此條碼，是否暫時建檔？
+                                ⚠ このバーコードは未登録です。仮登録しますか？
                             </div>
-                            <div style={{ fontSize: '11px', color: '#96a0b8', marginBottom: '8px' }}>條碼：{quickAddBarcode}</div>
+                            <div style={{ fontSize: '11px', color: '#96a0b8', marginBottom: '8px' }}>バーコード：{quickAddBarcode}</div>
                             <div style={{ marginBottom: '10px' }}>
-                                <label style={s.label}>商品名稱</label>
-                                <input style={s.input} value={quickAddName} onChange={e => setQuickAddName(e.target.value)} placeholder="從外箱確認後輸入" />
+                                <label style={s.label}>商品名</label>
+                                <input style={s.input} value={quickAddName} onChange={e => setQuickAddName(e.target.value)} placeholder="外箱を確認して入力" />
                             </div>
                             <div style={{ marginBottom: '12px' }}>
-                                <label style={s.label}>廠商</label>
+                                <label style={s.label}>メーカー</label>
                                 <select style={{ ...s.input }} value={quickAddManufacturerId ?? ''} onChange={e => setQuickAddManufacturerId(e.target.value ? Number(e.target.value) : null)}>
-                                    <option value="">不確定</option>
+                                    <option value="">不明</option>
                                     {manufacturers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                                 </select>
                             </div>
                             <div style={{ display: 'flex', gap: '8px' }}>
-                                <button onClick={() => setShowQuickAdd(false)} style={{ ...s.btnOutline(false), flex: 1 }}>取消</button>
-                                <button onClick={handleQuickAdd} style={{ ...s.btnPrimary, flex: 1 }}>暫時建檔</button>
+                                <button onClick={() => setShowQuickAdd(false)} style={{ ...s.btnOutline(false), flex: 1 }}>キャンセル</button>
+                                <button onClick={handleQuickAdd} style={{ ...s.btnPrimary, flex: 1 }}>仮登録する</button>
                             </div>
                         </div>
                     )}
-                    {/* ===== 累積清單 ===== */}
+                    {/* ===== 入庫リスト ===== */}
                     {entries.length > 0 && (
                         <div style={{ marginBottom: '16px' }}>
                             <div style={{ fontSize: '12px', color: '#5a6480', fontWeight: 600, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                                入庫清單（{entries.length} 筆）
+                                入庫リスト（{entries.length} 件）
                             </div>
                             <div style={{ backgroundColor: '#fff', border: '1px solid #d0d7e8', borderRadius: '8px', overflow: 'hidden' }}>
                                 {entries.map((entry, idx) => (
@@ -348,12 +348,12 @@ function ScanPanel() {
                         </div>
                     )}
 
-                    {/* 運送公司・操作者・送出（清單有內容時才顯示）*/}
+                    {/* 運送会社・担当者・送信（リストに内容がある場合のみ表示）*/}
                     {entries.length > 0 && (
                         <>
-                            {/* 運送公司 */}
+                            {/* 運送会社 */}
                             <div style={{ marginBottom: '16px' }}>
-                                <label style={s.label}>運送公司</label>
+                                <label style={s.label}>運送会社</label>
                                 <div style={{ display: 'flex', gap: '8px' }}>
                                     {['ヤマト運輸', '佐川急便', '福山通運'].map(c => (
                                         <button key={c} onClick={() => setCarrier(carrier === c ? '' : c)} style={s.btnOutline(carrier === c)}>
@@ -363,24 +363,24 @@ function ScanPanel() {
                                 </div>
                             </div>
 
-                            {/* 操作者 */}
+                            {/* 担当者 */}
                             <div style={{ marginBottom: '16px' }}>
-                                <label style={s.label}>操作者</label>
+                                <label style={s.label}>担当者</label>
                                 <input
                                     style={s.input}
-                                    placeholder="姓名"
+                                    placeholder="氏名"
                                     value={operator}
                                     onChange={e => setOperator(e.target.value)}
                                 />
                             </div>
 
-                            {/* 送出 */}
+                            {/* 送信 */}
                             <button
                                 onClick={handleSubmit}
                                 disabled={isSubmitting}
                                 style={{ ...s.btnPrimary, width: '100%', padding: '12px', fontSize: '14px', opacity: isSubmitting ? 0.7 : 1 }}
                             >
-                                {isSubmitting ? '送出中…' : `確認入庫（${entries.length} 筆）`}
+                                {isSubmitting ? '送信中…' : `入庫を確定する（${entries.length} 件）`}
                             </button>
                         </>
                     )}

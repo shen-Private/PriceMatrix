@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import shared from '../../styles/shared.module.css';
 import styles from './DiscountPanel.module.css';
-
 const API_URL = import.meta.env.VITE_API_URL ?? '';
 // ── 型別定義 ──────────────────────────────────────────
 interface Category {
@@ -32,7 +32,7 @@ interface Toast {
   type: 'success' | 'error';
 }
 
-// Audit Log 的型別
+// Audit Log の型
 interface AuditLog {
   id: number;
   discountId: number;
@@ -66,7 +66,7 @@ function DiscountPanel() {
   const [toast, setToast] = useState<Toast | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── 批次修改 state ────────────────────────────────
+  // ── 一括変更 state ────────────────────────────────
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [batchValue, setBatchValue] = useState('');
   const [isBatchSaving, setIsBatchSaving] = useState(false);
@@ -85,7 +85,7 @@ function DiscountPanel() {
   useEffect(() => {
     axios.get(`${API_URL}/api/categories`)
       .then(res => setCategories(res.data))
-      .catch(err => console.error('分類載入失敗：', err));
+      .catch(err => console.error('カテゴリ読み込み失敗：', err));
   }, []);
 
   const handleSearch = async () => {
@@ -115,7 +115,7 @@ function DiscountPanel() {
       }
 
     } catch (err) {
-      showToast('搜尋失敗', 'error');
+      showToast('検索に失敗しました', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -124,7 +124,7 @@ function DiscountPanel() {
   const handleSelectCandidate = (candidate: Customer) => {
     if (currentCustomer) {
       const confirmed = window.confirm(
-        `確定切換客戶？\n目前：${currentCustomer.name}\n切換至：${candidate.name}`
+        `取引先を切り替えますか？\n現在：${currentCustomer.name}\n切り替え先：${candidate.name}`
       );
       if (!confirmed) return;
     }
@@ -144,7 +144,7 @@ function DiscountPanel() {
       const discountRes = await axios.get(`${API_URL}/api/discounts/customer/${customer.id}?${categoryParam}`);
       setDiscounts(discountRes.data);
     } catch (err) {
-      showToast('折扣載入失敗', 'error');
+      showToast('割引の読み込みに失敗しました', 'error');
     }
   };
 
@@ -156,7 +156,7 @@ function DiscountPanel() {
   const handleSave = async (discountId: number) => {
     const val = parseInt(editingValue, 10);
     if (isNaN(val) || val < 1 || val > 100) {
-      showToast('請輸入 1 ~ 100 的數字', 'error');
+      showToast('1〜100の数値を入力してください', 'error');
       return;
     }
     const newRatio = val / 100;
@@ -168,27 +168,27 @@ function DiscountPanel() {
       setDiscounts(prev => (prev ?? []).map(d =>
         d.id === discountId ? { ...d, discountRatio: newRatio } : d
       ));
-      showToast(`折扣已更新為 ${val}%`);
+      showToast(`割引率を ${val}% に更新しました`);
       if (auditPanelDiscountId === discountId) {
         loadAuditLogs(discountId);
       }
     } catch (err) {
-      showToast('儲存失敗', 'error');
+      showToast('保存に失敗しました', 'error');
     } finally {
       setSavingId(null);
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('確定要刪除這筆折扣嗎？')) return;
+    if (!window.confirm('この割引を削除してよろしいですか？')) return;
     try {
       await axios.delete(`${API_URL}/api/discounts/${id}`);
       setDiscounts(prev => (prev ?? []).filter(d => d.id !== id));
       setSelectedIds(prev => { const s = new Set(prev); s.delete(id); return s; });
       if (auditPanelDiscountId === id) setAuditPanelDiscountId(null);
-      showToast('刪除成功');
+      showToast('削除しました');
     } catch (err) {
-      showToast('刪除失敗', 'error');
+      showToast('削除に失敗しました', 'error');
     }
   };
 
@@ -199,7 +199,7 @@ function DiscountPanel() {
       setAvailableProducts(res.data);
       setShowAddForm(true);
     } catch (err) {
-      showToast('載入商品失敗', 'error');
+      showToast('商品の読み込みに失敗しました', 'error');
     }
   };
 
@@ -215,13 +215,13 @@ function DiscountPanel() {
       setDiscounts(prev => [...(prev ?? []), res.data]);
       setShowAddForm(false);
       setNewDiscount({ productId: '', discountRatio: '' });
-      showToast('新增成功');
+      showToast('追加しました');
     } catch (err) {
-      showToast('新增失敗', 'error');
+      showToast('追加に失敗しました', 'error');
     }
   };
 
-  // ── 批次修改 handlers ─────────────────────────────
+  // ── 一括変更 handlers ─────────────────────────────
 
   const toggleSelect = (id: number) => {
     setSelectedIds(prev => {
@@ -243,7 +243,7 @@ function DiscountPanel() {
   const handleBatchSave = async () => {
     const val = parseInt(batchValue, 10);
     if (isNaN(val) || val < 1 || val > 100) {
-      showToast('請輸入 1 ~ 100 的數字', 'error');
+      showToast('1〜100の数値を入力してください', 'error');
       return;
     }
     const newRatio = val / 100;
@@ -257,11 +257,11 @@ function DiscountPanel() {
       setDiscounts(prev => (prev ?? []).map(d =>
         selectedIds.has(d.id) ? { ...d, discountRatio: newRatio } : d
       ));
-      showToast(`已將 ${selectedIds.size} 筆折扣更新為 ${val}%`);
+      showToast(`${selectedIds.size} 件の割引率を ${val}% に更新しました`);
       setSelectedIds(new Set());
       setBatchValue('');
     } catch (err) {
-      showToast('批次修改失敗', 'error');
+      showToast('一括変更に失敗しました', 'error');
     } finally {
       setIsBatchSaving(false);
     }
@@ -275,7 +275,7 @@ function DiscountPanel() {
       const res = await axios.get(`${API_URL}/api/discounts/${discountId}/audit-logs`);
       setAuditLogs(res.data);
     } catch (err) {
-      showToast('歷史載入失敗', 'error');
+      showToast('履歴の読み込みに失敗しました', 'error');
     } finally {
       setIsAuditLoading(false);
     }
@@ -290,12 +290,12 @@ function DiscountPanel() {
     loadAuditLogs(discountId);
   };
 
-  // action 的中文對應
+  // action の日本語対応
   const actionLabel: Record<string, string> = {
-    CREATE: '新增',
-    UPDATE: '修改',
-    BATCH_UPDATE: '批次修改',
-    DELETE: '刪除',
+    CREATE: '追加',
+    UPDATE: '変更',
+    BATCH_UPDATE: '一括変更',
+    DELETE: '削除',
   };
 
   // audit badge の class を action で決定
@@ -323,58 +323,58 @@ function DiscountPanel() {
   const auditDiscount = validDiscounts.find(d => d.id === auditPanelDiscountId);
 
   return (
-    <div className={styles.root}>
+    <div className={shared.root}>
 
-      <header className={styles.header}>
-        <div className={styles.headerLogo}>
-          <div className={styles.headerLogoMark}>PM</div>
+      <header className={shared.header}>
+        <div className={shared.headerLogo}>
+          <div className={shared.headerLogoMark}>PM</div>
           PriceMatrix
         </div>
-        <div className={styles.headerSystemLabel}>折扣管理</div>
+        <div className={shared.headerSystemLabel}>割引管理</div>
       </header>
 
-      <div className={styles.layout}>
-        <aside className={styles.sidebar}>
+      <div className={shared.layout}>
+        <aside className={shared.sidebar}>
 
           <div>
-            <div className={styles.sectionLabel}>搜尋條件</div>
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>客戶名稱</label>
+            <div className={shared.sectionLabel}>検索条件</div>
+            <div className={shared.formGroup}>
+              <label className={shared.formLabel}>取引先名</label>
               <input
-                className={styles.formInput}
+                className={shared.formInput}
                 type="text"
-                placeholder="輸入客戶名稱…"
+                placeholder="取引先名を入力…"
                 value={searchText}
                 onChange={e => setSearchText(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSearch()}
               />
             </div>
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>商品分類</label>
+            <div className={shared.formGroup}>
+              <label className={shared.formLabel}>商品カテゴリ</label>
               <select
-                className={styles.formSelect}
+                className={shared.formSelect}
                 value={selectedCategory}
                 onChange={e => setSelectedCategory(e.target.value)}
               >
-                <option value="">全部分類</option>
+                <option value="">すべてのカテゴリ</option>
                 {categories.map(cat => (
                   <option key={cat.id} value={cat.id}>{cat.name}</option>
                 ))}
               </select>
             </div>
             <button
-              className={styles.btnSearch}
+              className={shared.btnSearch}
               onClick={handleSearch}
               disabled={isLoading}
             >
-              {isLoading ? '搜尋中…' : '搜尋'}
+              {isLoading ? '検索中…' : '検索'}
             </button>
           </div>
 
           {!isCustomerSelected && customerCandidates.length > 0 && (
             <div>
-              <div className={styles.sectionLabel}>
-                搜尋結果（{customerCandidates.length} 筆）
+              <div className={shared.sectionLabel}>
+                検索結果（{customerCandidates.length} 件）
               </div>
               {customerCandidates.map(c => (
                 <div
@@ -382,10 +382,10 @@ function DiscountPanel() {
                   className={styles.candidateItem}
                   onClick={() => handleSelectCandidate(c)}
                 >
-                  <div className={styles.candidateAvatar}>{c.name.charAt(0)}</div>
+                  <div className={shared.candidateAvatar}>{c.name.charAt(0)}</div>
                   <div>
-                    <div className={styles.candidateName}>{c.name}</div>
-                    <div className={styles.candidateId}>ID #{c.id}</div>
+                    <div className={shared.candidateName}>{c.name}</div>
+                    <div className={shared.candidateId}>ID #{c.id}</div>
                   </div>
                 </div>
               ))}
@@ -394,13 +394,13 @@ function DiscountPanel() {
 
           {currentCustomer && (
             <div>
-              <div className={styles.sectionLabel}>目前客戶</div>
-              <div className={styles.customerChip}>
-                <div className={styles.customerAvatar}>{currentCustomer.name.charAt(0)}</div>
+              <div className={shared.sectionLabel}>選択中の取引先</div>
+              <div className={shared.customerChip}>
+                <div className={shared.customerAvatar}>{currentCustomer.name.charAt(0)}</div>
                 <div>
-                  <div className={styles.customerName}>{currentCustomer.name}</div>
-                  <div className={styles.customerMeta}>
-                    ID #{currentCustomer.id} · {validDiscounts.length} 筆折扣
+                  <div className={shared.customerName}>{currentCustomer.name}</div>
+                  <div className={shared.customerMeta}>
+                    ID #{currentCustomer.id} · {validDiscounts.length} 件の割引
                   </div>
                 </div>
               </div>
@@ -409,35 +409,35 @@ function DiscountPanel() {
 
           {validDiscounts.length > 0 && (
             <div>
-              <div className={styles.sectionLabel}>本次查詢</div>
-              <div className={styles.statItem}>
-                <span className={styles.statLabel}>顯示筆數</span>
-                <span className={styles.statValue}>{validDiscounts.length}</span>
+              <div className={shared.sectionLabel}>検索結果サマリー</div>
+              <div className={shared.statItem}>
+                <span className={shared.statLabel}>表示件数</span>
+                <span className={shared.statValue}>{validDiscounts.length}</span>
               </div>
-              <div className={styles.statItem}>
-                <span className={styles.statLabel}>平均折扣</span>
-                <span className={styles.statValue}>{avgDiscount}%</span>
+              <div className={shared.statItem}>
+                <span className={shared.statLabel}>平均割引率</span>
+                <span className={shared.statValue}>{avgDiscount}%</span>
               </div>
-              <div className={styles.statItem}>
-                <span className={styles.statLabel}>最低折扣</span>
-                <span className={styles.statValue}>{minDiscount}%</span>
+              <div className={shared.statItem}>
+                <span className={shared.statLabel}>最低割引率</span>
+                <span className={shared.statValue}>{minDiscount}%</span>
               </div>
             </div>
           )}
 
           {isCustomerSelected && customerCandidates.length > 0 && (
             <div className={styles.sidebarSwitchSection}>
-              <div className={styles.sectionLabel}>其他搜尋結果（點擊切換）</div>
+              <div className={shared.sectionLabel}>他の検索結果（クリックで切替）</div>
               {customerCandidates.map(c => (
                 <div
                   key={c.id}
-                  className={styles.candidateMiniItem}
+                  className={shared.candidateMiniItem}
                   onClick={() => handleSelectCandidate(c)}
                 >
-                  <div className={styles.candidateMiniAvatar}>{c.name.charAt(0)}</div>
-                  <span className={styles.candidateMiniName}>{c.name}</span>
-                  <span className={styles.candidateMiniId}>#{c.id}</span>
-                  <span className={styles.candidateMiniArrow}>→</span>
+                  <div className={shared.candidateMiniAvatar}>{c.name.charAt(0)}</div>
+                  <span className={shared.candidateMiniName}>{c.name}</span>
+                  <span className={shared.candidateMiniId}>#{c.id}</span>
+                  <span className={shared.candidateMiniArrow}>→</span>
                 </div>
               ))}
             </div>
@@ -445,20 +445,20 @@ function DiscountPanel() {
 
         </aside>
 
-        <main className={styles.main}>
+        <main className={shared.main}>
           <div>
-            <div className={styles.mainTitle}>折扣清單</div>
-            <div className={styles.mainSubtitle}>點擊折扣率開始編輯・Enter 或按確認送出</div>
+            <div className={styles.mainTitle}>割引一覧</div>
+            <div className={styles.mainSubtitle}>割引率をクリックして編集・Enter または確定ボタンで保存</div>
           </div>
 
-          {/* ── 批次修改工具列 ── */}
+          {/* ── 一括変更ツールバー ── */}
           {selectedIds.size > 0 && (
             <div className={styles.batchToolbar}>
-              <span className={styles.batchToolbarCount}>已選 {selectedIds.size} 筆</span>
-              <span className={styles.batchToolbarMuted}>統一設定為</span>
+              <span className={styles.batchToolbarCount}>{selectedIds.size} 件を選択中</span>
+              <span className={styles.batchToolbarMuted}>一括設定</span>
               <input
                 type="number" min="1" max="100"
-                placeholder="折扣%"
+                placeholder="割引率%"
                 value={batchValue}
                 onChange={e => setBatchValue(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleBatchSave()}
@@ -466,44 +466,44 @@ function DiscountPanel() {
               />
               <span className={styles.batchToolbarMuted}>%</span>
               <button
-                className={styles.btnConfirm}
+                className={shared.btnConfirm}
                 onClick={handleBatchSave}
                 disabled={isBatchSaving}
               >
-                {isBatchSaving ? '更新中…' : '套用'}
+                {isBatchSaving ? '更新中…' : '適用'}
               </button>
               <button
-                className={styles.btnConfirm}
+                className={shared.btnConfirm}
                 style={{ backgroundColor: 'transparent', color: '#5a6480', boxShadow: 'none', border: '1px solid #d0d7e8' }}
                 onClick={() => { setSelectedIds(new Set()); setBatchValue(''); }}
               >
-                取消選取
+                選択解除
               </button>
             </div>
           )}
 
-          {/* ── 主表格 + Audit Log 側欄 並排 ── */}
+          {/* ── メインテーブル + Audit Log サイドパネル 並列 ── */}
           <div className={styles.tableAndAudit}>
 
-            <div className={styles.tableWrap} style={{ flex: 1, minWidth: 0 }}>
-              <table className={styles.table}>
+            <div className={shared.tableWrap} style={{ flex: 1, minWidth: 0 }}>
+              <table className={shared.table}>
                 <thead>
                   <tr>
-                    <th className={styles.th} style={{ width: '36px' }}>
+                    <th className={shared.th} style={{ width: '36px' }}>
                       {validDiscounts.length > 0 && (
                         <input
                           type="checkbox"
                           checked={selectedIds.size === validDiscounts.length && validDiscounts.length > 0}
                           onChange={toggleSelectAll}
-                          title="全選"
-                        />
+                          title="すべて選択"
+                        />  
                       )}
                     </th>
-                    <th className={styles.th}>商品</th>
-                    <th className={styles.th}>分類</th>
-                    <th className={styles.th}>折扣率</th>
-                    <th className={styles.th}>原價 → 折後</th>
-                    <th className={styles.th}>操作</th>
+                    <th className={shared.th}>商品</th>
+                    <th className={shared.th}>カテゴリ</th>
+                    <th className={shared.th}>割引率</th>
+                    <th className={shared.th}>定価 → 割引後</th>
+                    <th className={shared.th}>操作</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -511,17 +511,17 @@ function DiscountPanel() {
                   {discounts === null && (
                     <tr>
                       <td colSpan={6} className={styles.td} style={{ textAlign: 'center', color: '#c0392b', padding: '32px' }}>
-                        找不到客戶，請確認名稱是否正確
+                        取引先が見つかりません。名前をご確認ください
                       </td>
                     </tr>
                   )}
 
                   {Array.isArray(discounts) && discounts.length === 0 && !currentCustomer && (
                     <tr>
-                      <td colSpan={6} className={styles.td} style={{ textAlign: 'center', color: '#96a0b8', padding: '32px' }}>
+                      <td colSpan={6} className={shared.td} style={{ textAlign: 'center', color: '#96a0b8', padding: '32px' }}>
                         {customerCandidates.length > 0
-                          ? '← 請從左側選擇客戶'
-                          : '請輸入客戶名稱後點擊搜尋'}
+                          ? '← 左側から取引先を選択してください'
+                          : '取引先名を入力して検索してください'}
                       </td>
                     </tr>
                   )}
@@ -535,7 +535,7 @@ function DiscountPanel() {
                     const pct = Math.round(discount.discountRatio * 100);
                     const basePrice = discount.product.basePrice;
                     const afterPrice = basePrice ? Math.round(basePrice * discount.discountRatio) : null;
-                    const tdClass = isLastRow ? styles.tdLast : styles.td;
+                    const tdClass = isLastRow ? shared.tdLast : shared.td;
 
                     return (
                       <tr key={discount.id} style={{
@@ -563,7 +563,7 @@ function DiscountPanel() {
                             {isEditing ? (
                               <>
                                 <input
-                                  className={styles.editInput}
+                                  className={shared.editInput}
                                   type="number" min="1" max="100"
                                   value={editingValue}
                                   onChange={e => setEditingValue(e.target.value)}
@@ -573,22 +573,22 @@ function DiscountPanel() {
                                   }}
                                   autoFocus
                                 />
-                                <button className={styles.btnConfirm} onClick={() => handleSave(discount.id)}>
-                                  確認
-                                  <span className={styles.btnConfirmShortcut}>Enter</span>
+                                <button className={shared.btnConfirm} onClick={() => handleSave(discount.id)}>
+                                  確定
+                                  <span className={shared.btnConfirmShortcut}>Enter</span>
                                 </button>
                                 <button
-                                  className={styles.btnIcon}
+                                  className={shared.btnIcon}
                                   style={{ color: '#c0392b', borderColor: '#e8b4b0' }}
-                                  title="取消"
+                                  title="キャンセル"
                                   onClick={() => setEditingId(null)}
                                 >✕</button>
                               </>
                             ) : (
                               <span
-                                className={styles.discountValue}
+                                className={shared.discountValue}
                                 onClick={() => startEdit(discount)}
-                                title="點擊編輯"
+                                title="クリックして編集"
                               >
                                 {isSaving ? '…' : `${pct}%`}
                                 {!isSaving && (
@@ -600,10 +600,10 @@ function DiscountPanel() {
                         </td>
                         <td className={tdClass}>
                           {afterPrice !== null ? (
-                            <div className={styles.priceBreakdown}>
-                              <span className={styles.priceOriginal}>¥{fmt(basePrice)}</span>
-                              <span className={styles.priceArrow}>→</span>
-                              <span className={styles.priceAfter}>¥{fmt(afterPrice)}</span>
+                            <div className={shared.priceBreakdown}>
+                              <span className={shared.priceOriginal}>¥{fmt(basePrice)}</span>
+                              <span className={shared.priceArrow}>→</span>
+                              <span className={shared.priceAfter}>¥{fmt(afterPrice)}</span>
                             </div>
                           ) : (
                             <span className={styles.noPriceCell}>—</span>
@@ -614,8 +614,8 @@ function DiscountPanel() {
                             {!isEditing && (
                               <>
                                 <button
-                                  className={styles.btnIcon}
-                                  title="變更歷史"
+                                  className={shared.btnIcon}
+                                  title="変更履歴"
                                   onClick={() => openAuditPanel(discount.id)}
                                   style={{
                                     // audit panel の開閉状態で色が変わるため inline を維持
@@ -626,7 +626,7 @@ function DiscountPanel() {
                                 >
                                   ☰
                                 </button>
-                                <button className={styles.btnIcon} title="刪除" onClick={() => handleDelete(discount.id)}>✕</button>
+                                <button className={styles.btnIcon} title="削除" onClick={() => handleDelete(discount.id)}>✕</button>
                               </>
                             )}
                           </div>
@@ -638,32 +638,32 @@ function DiscountPanel() {
               </table>
 
               {Array.isArray(discounts) && currentCustomer && (
-                <div className={styles.tableFooter}>
+                <div className={shared.tableFooter}>
                   {!showAddForm ? (
-                    <button className={styles.btnAddRow} onClick={handleShowAddForm}>
+                    <button className={shared.btnAddRow} onClick={handleShowAddForm}>
                       <span className={styles.addFormPlusIcon}>＋</span>
-                      新增折扣
+                      割引を追加
                     </button>
                   ) : (
                     <div className={styles.addFormRow}>
                       <div className={styles.addFormField}>
-                        <label className={styles.formLabel}>商品名稱</label>
+                        <label className={shared.formLabel}>商品名</label>
                         <select
-                          className={styles.formSelect}
+                          className={shared.formSelect}
                           style={{ width: '160px' }}
                           value={newDiscount.productId}
                           onChange={e => setNewDiscount({ ...newDiscount, productId: e.target.value })}
                         >
-                          <option value="">請選擇</option>
+                          <option value="">選択してください</option>
                           {availableProducts.map(p => (
                             <option key={p.id} value={p.id}>{p.name}</option>
                           ))}
                         </select>
                       </div>
                       <div className={styles.addFormField}>
-                        <label className={styles.formLabel}>折扣率（%）</label>
+                        <label className={shared.formLabel}>割引率（%）</label>
                         <input
-                          className={styles.formInput}
+                          className={shared.formInput}
                           style={{ width: '90px' }}
                           type="number" min="1" max="100"
                           placeholder="例：80"
@@ -672,12 +672,12 @@ function DiscountPanel() {
                         />
                       </div>
                       <div className={styles.addFormActions}>
-                        <button className={styles.btnConfirm} onClick={handleCreate}>確認新增</button>
+                        <button className={shared.btnConfirm} onClick={handleCreate}>追加する</button>
                         <button
-                          className={styles.btnConfirm}
+                          className={shared.btnConfirm}
                           style={{ backgroundColor: 'transparent', color: '#5a6480', boxShadow: 'none', border: '1px solid #d0d7e8' }}
                           onClick={() => { setShowAddForm(false); setNewDiscount({ productId: '', discountRatio: '' }); }}
-                        >取消</button>
+                        >キャンセル</button>
                       </div>
                     </div>
                   )}
@@ -685,12 +685,12 @@ function DiscountPanel() {
               )}
             </div>
 
-            {/* ── Audit Log 側欄 ── */}
+            {/* ── Audit Log サイドパネル ── */}
             {auditPanelDiscountId !== null && (
               <div className={styles.auditPanel}>
                 <div className={styles.auditPanelHeader}>
                   <div>
-                    <div className={styles.auditPanelTitle}>變更歷史</div>
+                    <div className={styles.auditPanelTitle}>変更履歴</div>
                     {auditDiscount && (
                       <div className={styles.auditPanelProductName}>
                         {auditDiscount.product.name}
@@ -700,14 +700,14 @@ function DiscountPanel() {
                   <button
                     className={styles.auditPanelCloseBtn}
                     onClick={() => setAuditPanelDiscountId(null)}
-                    title="關閉"
+                    title="閉じる"
                   >✕</button>
                 </div>
 
                 {isAuditLoading ? (
-                  <div className={styles.auditPanelMessage}>載入中…</div>
+                  <div className={styles.auditPanelMessage}>読み込み中…</div>
                 ) : auditLogs.length === 0 ? (
-                  <div className={styles.auditPanelMessage}>尚無變更記錄</div>
+                  <div className={styles.auditPanelMessage}>変更履歴はありません</div>
                 ) : (
                   <div className={styles.auditLogList}>
                     {auditLogs.map(log => (
@@ -729,7 +729,7 @@ function DiscountPanel() {
                               <span className={styles.auditLogNewRatio}>{Math.round(log.newRatio * 100)}%</span>
                             </>
                           ) : (
-                            <span className={styles.auditLogNewRatio}>設為 {Math.round(log.newRatio * 100)}%</span>
+                            <span className={styles.auditLogNewRatio}>{Math.round(log.newRatio * 100)}% に設定</span>
                           )}
                         </div>
                         <div className={styles.auditLogOperator}>{log.operatedBy}</div>

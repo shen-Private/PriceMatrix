@@ -1,277 +1,17 @@
-/* ── Layout ── */
-.root {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  font-family: 'IBM Plex Sans JP', 'Noto Sans TC', sans-serif;
-  font-size: 14px;
-  background-color: #f0f3f8;
-  color: #1e2740;
-}
+/* ============================================================
+   DiscountPanel.module.css
+   只保留 DiscountPanel 專屬樣式
+   共用部分請從 shared.module.css import
+   ============================================================ */
 
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 32px;
-  height: 54px;
-  background-color: #ffffff;
-  border-bottom: 1px solid #d0d7e8;
-  box-shadow: 0 1px 3px rgba(30,39,64,0.08);
-  flex-shrink: 0;
-}
-
-.headerLogo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.headerLogoMark {
-  width: 26px;
-  height: 26px;
-  background-color: #4a78c4;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 700;
-  color: #fff;
-  font-family: monospace;
-}
-
-/* 新增：header 右側系統標籤 */
-.headerSystemLabel {
-  font-size: 13px;
-  color: #5a6480;
-}
-
-.layout {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-}
-
-/* ── Sidebar ── */
-.sidebar {
-  width: 272px;
-  flex-shrink: 0;
-  background-color: #ffffff;
-  border-right: 1px solid #d0d7e8;
-  padding: 24px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  overflow-y: auto;
-  box-shadow: 1px 0 3px rgba(30,39,64,0.06);
-}
-
-.sectionLabel {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #96a0b8;
-  margin-bottom: 10px;
-}
-
-/* 新增：sidebar 底部切換客戶區塊 */
+/* ── Sidebar 底部切換客戶區塊 ── */
 .sidebarSwitchSection {
   margin-top: auto;
   padding-top: 16px;
   border-top: 1px solid #e8ecf4;
 }
 
-.formGroup {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 12px;
-}
-
-.formLabel {
-  font-size: 12px;
-  color: #5a6480;
-  font-weight: 500;
-}
-
-.formInput {
-  background-color: #f0f3f8;
-  border: 1px solid #d0d7e8;
-  border-radius: 7px;
-  color: #1e2740;
-  font-size: 13px;
-  padding: 9px 12px;
-  outline: none;
-  width: 100%;
-  font-family: inherit;
-  transition: border-color 0.15s;
-}
-
-.formSelect {
-  background-color: #f0f3f8;
-  border: 1px solid #d0d7e8;
-  border-radius: 7px;
-  color: #1e2740;
-  font-size: 13px;
-  padding: 9px 12px;
-  outline: none;
-  width: 100%;
-  font-family: inherit;
-  appearance: none;
-  cursor: pointer;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2396a0b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-}
-
-.btnSearch {
-  background-color: #4a78c4;
-  color: #fff;
-  border: none;
-  border-radius: 7px;
-  padding: 10px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  width: 100%;
-  font-family: inherit;
-  letter-spacing: 0.02em;
-  box-shadow: 0 2px 6px rgba(74,120,196,0.25);
-  transition: background 0.15s;
-}
-
-.btnSearch:disabled {
-  opacity: 0.7;
-}
-
-/* ── Customer ── */
-.customerChip {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background-color: rgba(74,120,196,0.10);
-  border: 1px solid rgba(74,120,196,0.25);
-  border-radius: 8px;
-  padding: 10px 14px;
-}
-
-.customerAvatar {
-  width: 32px;
-  height: 32px;
-  background-color: #4a78c4;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 600;
-  color: #fff;
-  flex-shrink: 0;
-}
-
-.customerName {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1e2740;
-}
-
-.customerMeta {
-  font-size: 11px;
-  color: #5a6480;
-  margin-top: 1px;
-}
-
-/* ── Candidate（大卡）── */
-.candidateItem {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  border-radius: 7px;
-  border: 1px solid #d0d7e8;
-  background-color: #f8f9fd;
-  cursor: pointer;
-  margin-bottom: 6px;
-  transition: all 0.15s;
-}
-
-.candidateItem:hover {
-  background-color: #eef2fb;
-  border-color: #4a78c4;
-}
-
-.candidateAvatar {
-  width: 28px;
-  height: 28px;
-  background-color: #e8ecf4;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 600;
-  color: #5a6480;
-  flex-shrink: 0;
-}
-
-.candidateName {
-  font-size: 13px;
-  font-weight: 500;
-  color: #1e2740;
-}
-
-.candidateId {
-  font-size: 11px;
-  color: #96a0b8;
-  margin-top: 1px;
-}
-
-/* ── Candidate Mini（小卡）── */
-.candidateMiniItem {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid #c2cade;
-  background-color: #f0f3f8;
-  cursor: pointer;
-  margin-bottom: 4px;
-  transition: all 0.15s;
-}
-
-.candidateMiniItem:hover {
-  background-color: #eef2fb;
-  border-color: #4a78c4;
-  box-shadow: 0 0 0 2px rgba(74,120,196,0.12);
-}
-
-.candidateMiniAvatar {
-  width: 22px;
-  height: 22px;
-  background-color: #e8ecf4;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 600;
-  color: #5a6480;
-  flex-shrink: 0;
-}
-
-.candidateMiniName {
-  font-size: 12px;
-  font-weight: 500;
-  color: #5a6480;
-}
-
-/* 新增：candidateMini 右側 id と矢印 */
+/* ── Candidate Mini 右側 id 與箭頭 ── */
 .candidateMiniId {
   font-size: 11px;
   color: #96a0b8;
@@ -282,52 +22,6 @@
   font-size: 12px;
   color: #4a78c4;
   margin-left: 4px;
-}
-
-/* ── Stats ── */
-.statItem {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  background-color: #e8ecf4;
-  border-radius: 6px;
-  border: 1px solid #d0d7e8;
-  margin-bottom: 8px;
-}
-
-.statLabel {
-  font-size: 12px;
-  color: #5a6480;
-}
-
-.statValue {
-  font-family: monospace;
-  font-size: 13px;
-  color: #1e2740;
-  font-weight: 500;
-}
-
-/* ── Main ── */
-.main {
-  flex: 1;
-  overflow-y: auto;
-  padding: 24px 32px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.mainTitle {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1e2740;
-}
-
-.mainSubtitle {
-  font-size: 12px;
-  color: #96a0b8;
-  margin-top: 2px;
 }
 
 /* ── Batch Toolbar（批次修改工具列）── */
@@ -370,179 +64,7 @@
   align-items: flex-start;
 }
 
-/* ── Table ── */
-.tableWrap {
-  background-color: #ffffff;
-  border: 1px solid #d0d7e8;
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(30,39,64,0.08);
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.th {
-  padding: 11px 16px;
-  text-align: left;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: #96a0b8;
-  background-color: #e8ecf4;
-  border-bottom: 1px solid #d0d7e8;
-}
-
-.td {
-  padding: 12px 16px;
-  font-size: 13px;
-  color: #1e2740;
-  vertical-align: middle;
-  border-bottom: 1px solid #d0d7e8;
-}
-
-.tdLast {
-  padding: 12px 16px;
-  font-size: 13px;
-  color: #1e2740;
-  vertical-align: middle;
-}
-
-.discountValue {
-  font-family: monospace;
-  font-size: 15px;
-  font-weight: 600;
-  color: #2a9d6e;
-  cursor: pointer;
-  padding: 4px 10px;
-  border-radius: 5px;
-  border: 1px solid transparent;
-  display: inline-block;
-  min-width: 62px;
-  text-align: center;
-  transition: all 0.15s;
-}
-
-.discountValue:hover {
-  background-color: #eef2fb;
-  border-color: #d0d7e8;
-}
-
-.editInput {
-  font-family: monospace;
-  font-size: 14px;
-  font-weight: 600;
-  width: 72px;
-  padding: 5px 8px;
-  border-radius: 5px;
-  border: 1px solid #4a78c4;
-  background-color: #fff;
-  color: #2d5399;
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(74,120,196,0.12);
-  text-align: center;
-}
-
-.btnConfirm {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background-color: #4a78c4;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 5px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  margin-left: 8px;
-  transition: background 0.15s;
-  white-space: nowrap;
-}
-
-.btnConfirmShortcut {
-  opacity: 0.7;
-  font-family: monospace;
-  font-size: 10px;
-  background-color: rgba(255,255,255,0.2);
-  border-radius: 3px;
-  padding: 1px 4px;
-}
-
-.priceBreakdown {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-}
-
-.priceOriginal {
-  color: #96a0b8;
-  text-decoration: line-through;
-  font-family: monospace;
-}
-
-.priceArrow {
-  color: #96a0b8;
-  font-size: 10px;
-}
-
-.priceAfter {
-  color: #1e2740;
-  font-family: monospace;
-  font-weight: 500;
-}
-
-.btnIcon {
-  width: 30px;
-  height: 30px;
-  border-radius: 6px;
-  border: 1px solid #d0d7e8;
-  background-color: transparent;
-  color: #96a0b8;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  transition: all 0.15s;
-  margin-left: 6px;
-}
-
-.btnIcon:hover {
-  background-color: #eef2fb;
-  border-color: #4a78c4;
-  color: #4a78c4;
-}
-
-.tableFooter {
-  border-top: 1px dashed #d0d7e8;
-  padding: 10px 16px;
-}
-
-.btnAddRow {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background-color: transparent;
-  border: none;
-  color: #96a0b8;
-  font-size: 13px;
-  cursor: pointer;
-  padding: 4px 0;
-  font-family: inherit;
-  transition: color 0.15s;
-}
-
-.btnAddRow:hover {
-  color: #4a78c4;
-}
-
-/* 新增：＋ボタンのアイコン枠 */
+/* ── 新增折扣表單 ── */
 .addFormPlusIcon {
   width: 20px;
   height: 20px;
@@ -554,7 +76,6 @@
   font-size: 14px;
 }
 
-/* 新增：新增折扣表單 layout */
 .addFormRow {
   display: flex;
   gap: 12px;
@@ -574,21 +95,9 @@
   gap: 8px;
 }
 
-/* 新增：原價欄位無資料時 */
 .noPriceCell {
   color: #96a0b8;
   font-size: 12px;
-}
-
-.badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 500;
-  background-color: #e8ecf4;
-  color: #5a6480;
-  border: 1px solid #d0d7e8;
 }
 
 /* ── Audit Log 側欄 ── */
@@ -656,7 +165,6 @@
   margin-bottom: 6px;
 }
 
-/* badge の基本スタイル */
 .auditLogActionBadge {
   font-size: 11px;
   font-weight: 600;
@@ -664,7 +172,6 @@
   border-radius: 4px;
 }
 
-/* action 種別ごとの色（動的なので inline で上書きするため基底だけ定義） */
 .auditLogActionCreate {
   background-color: #e8f5e9;
   color: #2e7d32;
@@ -708,31 +215,4 @@
   font-size: 11px;
   color: #96a0b8;
   margin-top: 4px;
-}
-
-/* ── Toast ── */
-.toast {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  padding: 11px 18px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  box-shadow: 0 4px 16px rgba(30,39,64,0.12);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  z-index: 9999;
-  background-color: #ffffff;
-}
-
-.toastSuccess {
-  border: 1px solid #2a9d6e;
-  color: #2a9d6e;
-}
-
-.toastError {
-  border: 1px solid #c0392b;
-  color: #c0392b;
 }

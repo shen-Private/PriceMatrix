@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import styles from './QuotePanel.module.css';
+import shared from '../../styles/shared.module.css';
 import { useSearchParams } from 'react-router-dom';
 const API = import.meta.env.VITE_API_URL ?? '';
 
@@ -27,7 +28,7 @@ interface Quote {
     parentQuote?: { id: number };
 }
 const statusLabel: Record<string, string> = {
-    DRAFT: '草稿', SENT: '已送出', CONVERTED: '已轉訂單', CANCELLED: '已取消'
+    DRAFT: '下書き', SENT: '送付済み', CONVERTED: '受注済み', CANCELLED: 'キャンセル'
 };
 
 const statusColor: Record<string, string> = {
@@ -64,7 +65,7 @@ const QuotePanel: React.FC = () => {
         updated[index].productId = productId;
         const product = products.find(p => p.id === productId);
         updated[index].basePrice = product?.basePrice ?? 0;
-        // 如果客戶和商品都選了，查折扣
+        // 顧客と商品が両方選択されていれば割引を取得
         if (customerId && productId) {
             try {
                 const res = await axios.get(`${API}/api/discounts/customer/${customerId}/product/${productId}`);
@@ -72,7 +73,7 @@ const QuotePanel: React.FC = () => {
                 const product = products.find(p => p.id === productId);
                 updated[index].unitPrice = Math.round((product?.basePrice ?? 0) * discount.discountRatio);
             } catch {
-                // 沒有折扣設定，用定價
+                // 割引設定なし → 定価を使用
                 const product = products.find(p => p.id === productId);
                 updated[index].unitPrice = product?.basePrice ?? 0;
             }
@@ -89,7 +90,7 @@ const QuotePanel: React.FC = () => {
     const total = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
 
     const handleSubmit = async () => {
-        if (!customerId) return alert('請選擇客戶');
+        if (!customerId) return alert('顧客を選択してください');
         if (editingId) {
             await axios.put(`${API}/api/quotes/${editingId}`, { customerId, note, items });
         } else {
@@ -106,10 +107,10 @@ const QuotePanel: React.FC = () => {
         setCustomerId(q.customer.id);
         setNote(q.note ?? '');
         setItems(q.items.map(i => ({
-            productId: i.productId,        // 改這裡
+            productId: i.productId,
             quantity: i.quantity,
             unitPrice: i.unitPrice,
-            basePrice: i.basePrice         // 改這裡
+            basePrice: i.basePrice
         })));
         setEditingId(q.id);
         setView('create');
@@ -124,41 +125,41 @@ const QuotePanel: React.FC = () => {
         loadQuotes();
     };
     const handleConvert = async (id: number) => {
-        if (!window.confirm('確認成立此報價單並建立訂單？')) return;
+        if (!window.confirm('この見積書を確定して受注を作成しますか？')) return;
         await axios.post(`${API}/api/orders/from-quote/${id}`);
         loadQuotes();
     };
     return (
-        <div className={styles.root}>
-            <div className={styles.main}>
-                {/* 頁籤切換 */}
+        <div className={shared.root}>
+            <div className={shared.main}>
+                {/* タブ切替 */}
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <div className={styles.mainTitle}>報價單</div>
+                    <div className={shared.mainTitle}>見積書</div>
                     <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
                         <button
                             className={view === 'list' ? styles.btnPrimary : styles.btnSecondary}
                             onClick={() => setView('list')}
-                        >列表</button>
+                        >一覧</button>
                         <button
                             className={view === 'create' ? styles.btnPrimary : styles.btnSecondary}
                             onClick={() => setView('create')}
-                        >＋ 建立報價單</button>
+                        >＋ 見積書を作成</button>
                     </div>
                 </div>
 
-                {/* 列表 */}
+                {/* 一覧 */}
                 {view === 'list' && (
-                    <div className={styles.tableWrap}>
-                        <table className={styles.table}>
+                    <div className={shared.tableWrap}>
+                        <table className={shared.table}>
                             <thead>
                                 <tr>
-                                    <th className={styles.th}>#</th>
-                                    <th className={styles.th}>客戶</th>
-                                    <th className={styles.th}>商品數</th>
-                                    <th className={styles.th}>合計</th>
-                                    <th className={styles.th}>狀態</th>
-                                    <th className={styles.th}>建立時間</th>
-                                    <th className={styles.th}>操作</th>
+                                    <th className={shared.th}>#</th>
+                                    <th className={shared.th}>顧客</th>
+                                    <th className={shared.th}>商品数</th>
+                                    <th className={shared.th}>合計</th>
+                                    <th className={shared.th}>ステータス</th>
+                                    <th className={shared.th}>作成日時</th>
+                                    <th className={shared.th}>操作</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -166,20 +167,20 @@ const QuotePanel: React.FC = () => {
                                     const qTotal = q.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
                                     return (
                                         <tr key={q.id}>
-                                            <td className={styles.td}>
+                                            <td className={shared.td}>
                                                 {q.id}
                                                 {q.parentQuote && (
                                                     <span style={{ fontSize: '11px', color: '#96a0b8', marginLeft: '6px' }}>
-                                                        修訂自 Q#{q.parentQuote.id}
+                                                        改訂元 Q#{q.parentQuote.id}
                                                     </span>
                                                 )}
                                             </td>
-                                            <td className={styles.td}>{q.customer.name}</td>
-                                            <td className={styles.td}>{q.items.length} 項</td>
-                                            <td className={styles.td} style={{ fontFamily: 'monospace' }}>
+                                            <td className={shared.td}>{q.customer.name}</td>
+                                            <td className={shared.td}>{q.items.length} 点</td>
+                                            <td className={shared.td} style={{ fontFamily: 'monospace' }}>
                                                 ¥{qTotal.toLocaleString()}
                                             </td>
-                                            <td className={styles.td}>
+                                            <td className={shared.td}>
                                                 <span style={{
                                                     padding: '2px 10px', borderRadius: '12px', fontSize: '12px',
                                                     fontWeight: 600, backgroundColor: `${statusColor[q.status]}20`,
@@ -188,42 +189,42 @@ const QuotePanel: React.FC = () => {
                                                     {statusLabel[q.status] ?? q.status}
                                                 </span>
                                             </td>
-                                            <td className={styles.td} style={{ color: '#96a0b8', fontSize: '12px' }}>
-                                                {new Date(q.createdAt).toLocaleDateString('zh-TW')}
+                                            <td className={shared.td} style={{ color: '#96a0b8', fontSize: '12px' }}>
+                                                {new Date(q.createdAt).toLocaleDateString('ja-JP')}
                                             </td>
-                                            <td className={styles.td}>
+                                            <td className={shared.td}>
                                                 <div style={{ display: 'flex', gap: '4px' }}>
                                                     {q.status === 'DRAFT' && (
                                                         <button
-                                                            className={styles.btnIcon}
+                                                            className={shared.btnIcon}
                                                             onClick={() => handleEdit(q)}
-                                                            title="編輯"
+                                                            title="編集"
                                                         >✏️</button>
                                                     )}
                                                     {q.status === 'DRAFT' && (
                                                         <button
-                                                            className={styles.btnIcon}
+                                                            className={shared.btnIcon}
                                                             onClick={() => handleStatusChange(q.id, 'SENT')}
-                                                            title="送出"
+                                                            title="送付"
                                                         >📤</button>
                                                     )}
                                                     {q.status === 'SENT' && (
                                                         <button
-                                                            className={styles.btnIcon}
+                                                            className={shared.btnIcon}
                                                             onClick={() => handleRevise(q.id)}
-                                                            title="建立修正版"
+                                                            title="改訂版を作成"
                                                         >📝</button>
                                                     )}
                                                     {q.status === 'SENT' && (
                                                         <button
-                                                            className={styles.btnIcon}
+                                                            className={shared.btnIcon}
                                                             onClick={() => handleConvert(q.id)}
-                                                            title="確認成立"
+                                                            title="受注確定"
                                                         >✅</button>
-                                                    )}  
+                                                    )}
                                                     {(q.status === 'SENT' || q.status === 'DRAFT') && (
                                                         <button
-                                                            className={styles.btnIcon}
+                                                            className={shared.btnIcon}
                                                             onClick={async () => {
                                                                 const res = await axios.get(`/api/pdf/quote/${q.id}`, { responseType: 'blob' });
                                                                 const url = URL.createObjectURL(res.data);
@@ -233,7 +234,7 @@ const QuotePanel: React.FC = () => {
                                                                 a.click();
                                                                 URL.revokeObjectURL(url);
                                                             }}
-                                                            title="下載 PDF"
+                                                            title="PDF ダウンロード"
                                                         >🖨️</button>
                                                     )}
                                                 </div>
@@ -246,49 +247,49 @@ const QuotePanel: React.FC = () => {
                     </div>
                 )}
 
-                {/* 建立報價單 */}
+                {/* 見積書を作成 */}
                 {view === 'create' && (
                     <>
                         <div className={styles.card}>
-                            <div className={styles.sectionLabel}>客戶資訊</div>
-                            <div className={styles.formGroup}>
-                                <label className={styles.formLabel}>客戶</label>
-                                <select className={styles.formSelect} value={customerId}
+                            <div className={shared.sectionLabel}>顧客情報</div>
+                            <div className={shared.formGroup}>
+                                <label className={shared.formLabel}>顧客</label>
+                                <select className={shared.formSelect} value={customerId}
                                     onChange={e => setCustomerId(Number(e.target.value))}>
-                                    <option value="">-- 選擇客戶 --</option>
+                                    <option value="">-- 顧客を選択 --</option>
                                     {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                 </select>
                             </div>
-                            <div className={styles.formGroup}>
-                                <label className={styles.formLabel}>備註</label>
-                                <input className={styles.formInput} value={note}
-                                    onChange={e => setNote(e.target.value)} placeholder="選填" />
+                            <div className={shared.formGroup}>
+                                <label className={shared.formLabel}>備考</label>
+                                <input className={shared.formInput} value={note}
+                                    onChange={e => setNote(e.target.value)} placeholder="任意" />
                             </div>
                         </div>
 
-                        <div className={styles.tableWrap}>
-                            <div className={styles.sectionLabel} style={{ padding: '12px 16px 0' }}>商品明細</div>
-                            <table className={styles.table}>
+                        <div className={shared.tableWrap}>
+                            <div className={shared.sectionLabel} style={{ padding: '12px 16px 0' }}>商品明細</div>
+                            <table className={shared.table}>
                                 <thead>
                                     <tr>
-                                        <th className={styles.th}>商品</th>
-                                        <th className={styles.th}>數量</th>
-                                        <th className={styles.th}>單價</th>
-                                        <th className={styles.th}>小計</th>
-                                        <th className={styles.th}></th>
+                                        <th className={shared.th}>商品</th>
+                                        <th className={shared.th}>数量</th>
+                                        <th className={shared.th}>単価</th>
+                                        <th className={shared.th}>小計</th>
+                                        <th className={shared.th}></th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {items.map((item, index) => (
                                         <tr key={index}>
-                                            <td className={styles.td}>
+                                            <td className={shared.td}>
                                                 <select className={styles.itemSelect} value={item.productId}
                                                     onChange={e => handleProductChange(index, Number(e.target.value))}>
-                                                    <option value={0}>-- 選擇商品 --</option>
+                                                    <option value={0}>-- 商品を選択 --</option>
                                                     {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                                 </select>
                                             </td>
-                                            <td className={styles.td}>
+                                            <td className={shared.td}>
                                                 <input type="number" className={styles.itemInput} value={item.quantity}
                                                     style={{ width: '80px' }}
                                                     onChange={e => {
@@ -297,7 +298,7 @@ const QuotePanel: React.FC = () => {
                                                         setItems(updated);
                                                     }} />
                                             </td>
-                                            <td className={styles.td}>
+                                            <td className={shared.td}>
                                                 {item.basePrice > 0 && item.unitPrice !== item.basePrice && (
                                                     <span style={{ textDecoration: 'line-through', color: '#96a0b8', fontSize: '12px', marginRight: '6px' }}>
                                                         ¥{item.basePrice.toLocaleString()}
@@ -311,22 +312,22 @@ const QuotePanel: React.FC = () => {
                                                         setItems(updated);
                                                     }} />
                                             </td>
-                                            <td className={styles.td}>¥{(item.quantity * item.unitPrice).toLocaleString()}</td>
-                                            <td className={styles.td}>
-                                                <button className={styles.btnIcon} onClick={() => handleRemoveItem(index)}>✕</button>
+                                            <td className={shared.td}>¥{(item.quantity * item.unitPrice).toLocaleString()}</td>
+                                            <td className={shared.td}>
+                                                <button className={shared.btnIcon} onClick={() => handleRemoveItem(index)}>✕</button>
                                             </td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
-                            <div className={styles.btnAddRow} onClick={handleAddItem}>＋ 新增商品</div>
+                            <div className={shared.btnAddRow} onClick={handleAddItem}>＋ 商品を追加</div>
                             <div className={styles.totalRow}>
                                 合計 <span className={styles.totalAmount}>¥{total.toLocaleString()}</span>
                             </div>
                         </div>
 
                         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                            <button className={styles.btnPrimary} onClick={handleSubmit}>建立報價單</button>
+                            <button className={styles.btnPrimary} onClick={handleSubmit}>見積書を作成</button>
                         </div>
                     </>
                 )}

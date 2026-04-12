@@ -128,7 +128,7 @@ export default function CustomerPanel() {
       fetchContactLogs(customerId);
       setLogForm(emptyLog());
     } catch {
-      setError('新增失敗');
+      setError('追加に失敗しました');
     } finally {
       setLogLoading(false);
     }
@@ -153,12 +153,12 @@ export default function CustomerPanel() {
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) { setError('客戶名稱為必填'); return; }
+    if (!form.name.trim()) { setError('顧客名は必須です'); return; }
     setLoading(true);
     try {
       const payload = {
         ...form,
-        // parent 只傳 id 給後端
+        // parent は id のみバックエンドへ送信
         parent: form.parent ? { id: form.parent.id } : null,
       };
       if (editTarget) {
@@ -169,7 +169,7 @@ export default function CustomerPanel() {
       setShowForm(false);
       fetchCustomers();
     } catch (e: any) {
-      setError(e.response?.data?.message ?? '儲存失敗');
+      setError(e.response?.data?.message ?? '保存に失敗しました');
     } finally {
       setLoading(false);
     }
@@ -177,7 +177,7 @@ export default function CustomerPanel() {
   const handleDeactivate = async () => {
     if (!deactivateTarget) return;
     if (deactivateInput !== deactivateTarget.name) {
-      setError('客戶名稱輸入不正確');
+      setError('顧客名が正しくありません');
       return;
     }
     try {
@@ -186,41 +186,41 @@ export default function CustomerPanel() {
       setDeactivateInput('');
       fetchCustomers();
     } catch {
-      setError('停用失敗');
+      setError('無効化に失敗しました');
     }
   };
   const handleActivate = async (c: Customer) => {
-    if (!window.confirm(`確定要啟用「${c.name}」？`)) return;
+    if (!window.confirm(`「${c.name}」を有効化しますか？`)) return;
     try {
       await axios.patch(`${API}/api/customers/${c.id}/status`, { isActive: true });
       fetchCustomers();
     } catch {
-      setError('啟用失敗');
+      setError('有効化に失敗しました');
     }
   };
   return (
     <div style={{ padding: '24px', maxWidth: '960px', margin: '0 auto' }}>
-      {/* 標題列 */}
+      {/* タイトル行 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#2c3554', margin: 0 }}>客戶管理</h2>
+        <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#2c3554', margin: 0 }}>顧客管理</h2>
         {can('view_customers') && (
           <button onClick={openCreate} style={btnStyle('#4a78c4', '#fff')}>
-            ＋ 新增客戶
+            ＋ 顧客を追加
           </button>
         )}
       </div>
       <input
         type="text"
-        placeholder="搜尋客戶名稱、聯絡人、email、電話..."
+        placeholder="顧客名・担当者・メール・電話番号で検索..."
         value={searchQuery}
         onChange={e => setSearchQuery(e.target.value)}
         style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #dde3f0', fontSize: '13px', width: '280px' }}
       />
-      {/* 客戶列表 */}
+      {/* 顧客一覧 */}
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
         <thead>
           <tr style={{ backgroundColor: '#f4f6fb', color: '#5a6480' }}>
-            {['客戶名稱', '聯絡人', '電話', 'Email', '地址', '所屬集團', ''].map(h => (
+            {['顧客名', '担当者', '電話', 'Email', '住所', '所属グループ', ''].map(h => (
               <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600 }}>{h}</th>
             ))}
           </tr>
@@ -241,7 +241,7 @@ export default function CustomerPanel() {
                 <td style={td()} onClick={e => e.stopPropagation()}>
                   <div style={{ display: 'flex', gap: '6px' }}>
                     {can('view_customers') && (
-                      <button onClick={() => openEdit(c)} style={btnStyle('#f0f5ff', '#4a78c4')}>編輯</button>
+                      <button onClick={() => openEdit(c)} style={btnStyle('#f0f5ff', '#4a78c4')}>編集</button>
                     )}
                     {can('deactivate_customer') && (
                       <button onClick={() => {
@@ -251,22 +251,22 @@ export default function CustomerPanel() {
                           handleActivate(c);
                         }
                       }} style={btnStyle(c.active ? '#fff0f0' : '#f0f5ff', c.active ? '#e05c5c' : '#4a78c4')}>
-                        {c.active ? '停用' : '啟用'}
+                        {c.active ? '無効化' : '有効化'}
                       </button>
                     )}
                   </div>
                 </td>
               </tr>
 
-              {/* 展開行：時間軸 + 新增表單 */}
+              {/* 展開行：タイムライン＋追加フォーム */}
               {expandedId === c.id && (
                 <tr>
                   <td colSpan={7} style={{ backgroundColor: '#f8faff', padding: '16px 24px', borderBottom: '2px solid #dde3f0' }}>
                     <div style={{ display: 'flex', gap: '32px' }}>
 
-                      {/* 左側：時間軸 */}
+                      {/* 左側：タイムライン */}
                       <div style={{ flex: 1 }}>
-                        {/* Tab 切換 */}
+                        {/* タブ切替 */}
                         {(() => {
                           const customerQuotes = quotes.filter(q => q.customer?.id === c.id);
                           const customerOrders = orders.filter(o => o.customer?.id === c.id);
@@ -281,11 +281,11 @@ export default function CustomerPanel() {
                             <>
                               <div style={{ display: 'flex', gap: '4px', marginBottom: '16px' }}>
                                 {([
-                                  ['timeline', '時間軸'],
-                                  ['quotes', '報價單'],
-                                  ['orders', '訂單'],
-                                  ['logs', '聯絡紀錄'],
-                                  ...(c.prospectId ? [['prospect', '開發履歷']] : []),
+                                  ['timeline', 'タイムライン'],
+                                  ['quotes', '見積書'],
+                                  ['orders', '受注'],
+                                  ['logs', 'コンタクト履歴'],
+                                  ...(c.prospectId ? [['prospect', '開発履歴']] : []),
                                 ] as ['timeline' | 'quotes' | 'orders' | 'logs' | 'prospect', string][]).map(([key, label]) => (
                                   <button key={key} onClick={() => setActiveTab(key)}
                                     style={{
@@ -301,20 +301,20 @@ export default function CustomerPanel() {
                               {activeTab === 'timeline' && (
                                 <div>
                                   {timelineItems.length === 0 ? (
-                                    <div style={{ fontSize: '12px', color: '#96a0b8' }}>尚無紀錄</div>
+                                    <div style={{ fontSize: '12px', color: '#96a0b8' }}>記録がありません</div>
                                   ) : timelineItems.map((item, idx) => (
                                     <div key={idx} style={{ display: 'flex', gap: '12px', marginBottom: '10px', fontSize: '12px' }}>
                                       <span style={{ color: '#96a0b8', whiteSpace: 'nowrap', paddingTop: '2px' }}>
-                                        {new Date(item.date).toLocaleDateString('zh-TW')}
+                                        {new Date(item.date).toLocaleDateString('ja-JP')}
                                       </span>
                                       {item.type === 'quote' && <>
-                                        <span style={tagStyle('#e8f0fe')}>報價</span>
+                                        <span style={tagStyle('#e8f0fe')}>見積</span>
                                         <span style={{ color: '#4a78c4', fontWeight: 600 }}>Q#{item.data.id}</span>
                                         <span style={tagStyle(statusColor(item.data.status))}>{statusLabel(item.data.status)}</span>
                                         <span style={{ color: '#5a6480' }}>¥{item.data.items?.reduce((s: number, i: any) => s + i.quantity * i.unitPrice, 0).toLocaleString()}</span>
                                       </>}
                                       {item.type === 'order' && <>
-                                        <span style={tagStyle('#e6f4ea')}>訂單</span>
+                                        <span style={tagStyle('#e6f4ea')}>受注</span>
                                         <span style={{ color: '#4a78c4', fontWeight: 600 }}>#{item.data.id}</span>
                                         <span style={tagStyle(orderStatusColor(item.data.status))}>{orderStatusLabel(item.data.status)}</span>
                                       </>}
@@ -331,10 +331,10 @@ export default function CustomerPanel() {
                               {activeTab === 'quotes' && (
                                 <div>
                                   {customerQuotes.length === 0 ? (
-                                    <div style={{ fontSize: '12px', color: '#96a0b8' }}>尚無報價單</div>
+                                    <div style={{ fontSize: '12px', color: '#96a0b8' }}>見積書がありません</div>
                                   ) : customerQuotes.map(q => (
                                     <div key={q.id} style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '6px', fontSize: '12px' }}>
-                                      <span style={{ color: '#96a0b8' }}>{new Date(q.createdAt).toLocaleDateString('zh-TW')}</span>
+                                      <span style={{ color: '#96a0b8' }}>{new Date(q.createdAt).toLocaleDateString('ja-JP')}</span>
                                       <span style={{ color: '#4a78c4', fontWeight: 600 }}>Q#{q.id}</span>
                                       <span style={tagStyle(statusColor(q.status))}>{statusLabel(q.status)}</span>
                                       <span style={{ color: '#5a6480' }}>¥{q.items?.reduce((s: number, i: any) => s + i.quantity * i.unitPrice, 0).toLocaleString()}</span>
@@ -346,10 +346,10 @@ export default function CustomerPanel() {
                               {activeTab === 'orders' && (
                                 <div>
                                   {customerOrders.length === 0 ? (
-                                    <div style={{ fontSize: '12px', color: '#96a0b8' }}>尚無訂單</div>
+                                    <div style={{ fontSize: '12px', color: '#96a0b8' }}>受注がありません</div>
                                   ) : customerOrders.map(o => (
                                     <div key={o.id} style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '6px', fontSize: '12px' }}>
-                                      <span style={{ color: '#96a0b8' }}>{new Date(o.createdAt).toLocaleDateString('zh-TW')}</span>
+                                      <span style={{ color: '#96a0b8' }}>{new Date(o.createdAt).toLocaleDateString('ja-JP')}</span>
                                       <span style={{ color: '#4a78c4', fontWeight: 600 }}>#{o.id}</span>
                                       <span style={tagStyle(orderStatusColor(o.status))}>{orderStatusLabel(o.status)}</span>
                                     </div>
@@ -360,11 +360,11 @@ export default function CustomerPanel() {
                               {activeTab === 'logs' && (
                                 <div>
                                   {customerLogs.length === 0 ? (
-                                    <div style={{ fontSize: '12px', color: '#96a0b8' }}>尚無紀錄</div>
+                                    <div style={{ fontSize: '12px', color: '#96a0b8' }}>記録がありません</div>
                                   ) : customerLogs.map(log => (
                                     <div key={log.id} style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
                                       <div style={{ fontSize: '11px', color: '#96a0b8', whiteSpace: 'nowrap', paddingTop: '2px' }}>
-                                        {new Date(log.contactedAt).toLocaleDateString('zh-TW')}
+                                        {new Date(log.contactedAt).toLocaleDateString('ja-JP')}
                                       </div>
                                       <div>
                                         <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '2px' }}>
@@ -387,38 +387,38 @@ export default function CustomerPanel() {
                         })()}
                       </div>
 
-                      {/* 右側：新增表單 */}
+                      {/* 右側：追加フォーム */}
                       <div style={{ width: '280px', borderLeft: '1px solid #dde3f0', paddingLeft: '24px' }}>
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#2c3554', marginBottom: '12px' }}>新增紀錄</div>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#2c3554', marginBottom: '12px' }}>記録を追加</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          <Field label="互動方式">
+                          <Field label="コンタクト方法">
                             <select style={inputStyle} value={logForm.type}
                               onChange={e => setLogForm(f => ({ ...f, type: e.target.value }))}>
-                              <option value="VISIT">拜訪</option>
+                              <option value="VISIT">訪問</option>
                               <option value="PHONE">電話</option>
-                              <option value="EMAIL">郵件</option>
-                              <option value="QUOTE">報價</option>
-                              <option value="OTHER">其他</option>
+                              <option value="EMAIL">メール</option>
+                              <option value="QUOTE">見積</option>
+                              <option value="OTHER">その他</option>
                             </select>
                           </Field>
-                          <Field label="日期時間">
+                          <Field label="日時">
                             <input style={inputStyle} type="datetime-local" value={logForm.contactedAt}
                               onChange={e => setLogForm(f => ({ ...f, contactedAt: e.target.value }))} />
                           </Field>
                           <Field label="結果">
                             <select style={inputStyle} value={logForm.result}
                               onChange={e => setLogForm(f => ({ ...f, result: e.target.value }))}>
-                              <option value="PENDING">待跟進</option>
-                              <option value="OK">正面</option>
-                              <option value="NO">負面</option>
+                              <option value="PENDING">フォロー待ち</option>
+                              <option value="OK">ポジティブ</option>
+                              <option value="NO">ネガティブ</option>
                             </select>
                           </Field>
-                          <Field label="內容">
+                          <Field label="内容">
                             <textarea style={{ ...inputStyle, height: '60px', resize: 'vertical' }}
                               value={logForm.note}
                               onChange={e => setLogForm(f => ({ ...f, note: e.target.value }))} />
                           </Field>
-                          <Field label="下次行動">
+                          <Field label="次のアクション">
                             <input style={inputStyle} value={logForm.nextAction}
                               onChange={e => setLogForm(f => ({ ...f, nextAction: e.target.value }))} />
                           </Field>
@@ -426,7 +426,7 @@ export default function CustomerPanel() {
                             onClick={() => handleAddLog(c.id)}
                             disabled={logLoading}
                             style={{ ...btnStyle('#4a78c4', '#fff'), marginTop: '4px' }}>
-                            {logLoading ? '儲存中...' : '新增'}
+                            {logLoading ? '保存中...' : '追加'}
                           </button>
                         </div>
                       </div>
@@ -440,20 +440,20 @@ export default function CustomerPanel() {
         </tbody>
       </table>
 
-      {/* 新增/編輯 Modal */}
+      {/* 新規作成／編集モーダル */}
       {showForm && (
         <div style={overlayStyle}>
           <div style={modalStyle}>
             <h3 style={{ margin: '0 0 20px', fontSize: '16px', color: '#2c3554' }}>
-              {editTarget ? '編輯客戶' : '新增客戶'}
+              {editTarget ? '顧客を編集' : '顧客を追加'}
             </h3>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <Field label="客戶名稱 *">
+              <Field label="顧客名 *">
                 <input style={inputStyle} value={form.name}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
               </Field>
-              <Field label="聯絡人">
+              <Field label="担当者">
                 <input style={inputStyle} value={form.contactPerson}
                   onChange={e => setForm(f => ({ ...f, contactPerson: e.target.value }))} />
               </Field>
@@ -465,11 +465,11 @@ export default function CustomerPanel() {
                 <input style={inputStyle} value={form.email}
                   onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
               </Field>
-              <Field label="地址">
+              <Field label="住所">
                 <input style={inputStyle} value={form.address}
                   onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />
               </Field>
-              <Field label="所屬集團">
+              <Field label="所属グループ">
                 <select style={inputStyle}
                   value={form.parent?.id ?? ''}
                   onChange={e => {
@@ -477,22 +477,22 @@ export default function CustomerPanel() {
                     const found = customers.find(c => c.id === id) ?? null;
                     setForm(f => ({ ...f, parent: found ? { id: found.id, name: found.name } : null }));
                   }}>
-                  <option value="">無</option>
+                  <option value="">なし</option>
                   {customers
-                    .filter(c => c.id !== editTarget?.id) // 自己不能是自己的上層
+                    .filter(c => c.id !== editTarget?.id) // 自分自身は親に設定不可
                     .map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </Field>
-              <Field label="負責業務">
+              <Field label="担当営業">
                 <select style={inputStyle} value={form.assignedTo ?? ''}
                   onChange={e => setForm(f => ({ ...f, assignedTo: e.target.value }))}>
-                  <option value="">未分配</option>
+                  <option value="">未割当</option>
                   {salesUsers.map(u => (
                     <option key={u.id} value={u.username}>{u.username}</option>
                   ))}
                 </select>
               </Field>
-              <Field label="備註">
+              <Field label="備考">
                 <textarea style={{ ...inputStyle, height: '72px', resize: 'vertical' }}
                   value={form.note}
                   onChange={e => setForm(f => ({ ...f, note: e.target.value }))} />
@@ -502,34 +502,34 @@ export default function CustomerPanel() {
             {error && <div style={{ color: '#e05c5c', fontSize: '12px', marginTop: '8px' }}>{error}</div>}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '20px' }}>
-              <button onClick={() => setShowForm(false)} style={btnStyle('#f4f6fb', '#5a6480')}>取消</button>
+              <button onClick={() => setShowForm(false)} style={btnStyle('#f4f6fb', '#5a6480')}>キャンセル</button>
               <button onClick={handleSave} disabled={loading} style={btnStyle('#4a78c4', '#fff')}>
-                {loading ? '儲存中...' : '儲存'}
+                {loading ? '保存中...' : '保存'}
               </button>
             </div>
           </div>
         </div>
 
       )}
-      {/* 停用確認 Modal */}
+      {/* 無効化確認モーダル */}
       {deactivateTarget && (
         <div style={overlayStyle}>
           <div style={{ ...modalStyle, width: '400px' }}>
-            <h3 style={{ margin: '0 0 12px', fontSize: '16px', color: '#2c3554' }}>停用客戶</h3>
+            <h3 style={{ margin: '0 0 12px', fontSize: '16px', color: '#2c3554' }}>顧客を無効化</h3>
             <p style={{ fontSize: '13px', color: '#5a6480', marginBottom: '16px' }}>
-              停用後此客戶將從列表中隱藏。<br />
-              請輸入客戶名稱 <strong style={{ color: '#2c3554' }}>{deactivateTarget.name}</strong> 以確認。
+              無効化するとこの顧客は一覧から非表示になります。<br />
+              確認のため顧客名 <strong style={{ color: '#2c3554' }}>{deactivateTarget.name}</strong> を入力してください。
             </p>
             <input
               style={inputStyle}
-              placeholder="輸入客戶名稱"
+              placeholder="顧客名を入力"
               value={deactivateInput}
               onChange={e => { setDeactivateInput(e.target.value); setError(''); }}
             />
             {error && <div style={{ color: '#e05c5c', fontSize: '12px', marginTop: '8px' }}>{error}</div>}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '20px' }}>
-              <button onClick={() => setDeactivateTarget(null)} style={btnStyle('#f4f6fb', '#5a6480')}>取消</button>
-              <button onClick={handleDeactivate} style={btnStyle('#e05c5c', '#fff')}>確認停用</button>
+              <button onClick={() => setDeactivateTarget(null)} style={btnStyle('#f4f6fb', '#5a6480')}>キャンセル</button>
+              <button onClick={handleDeactivate} style={btnStyle('#e05c5c', '#fff')}>無効化を確定</button>
             </div>
           </div>
         </div>
@@ -538,7 +538,7 @@ export default function CustomerPanel() {
   );
 }
 
-// --- 小元件 & 樣式 ---
+// --- サブコンポーネント＆スタイル ---
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -571,8 +571,8 @@ const modalStyle: React.CSSProperties = {
   width: '480px', maxHeight: '90vh', overflowY: 'auto',
   boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
 };
-const typeLabel = (type: string) => ({ VISIT: '拜訪', PHONE: '電話', EMAIL: '郵件', QUOTE: '報價', OTHER: '其他' }[type] ?? type);
-const resultLabel = (result: string) => ({ PENDING: '待跟進', OK: '正面', NO: '負面' }[result] ?? result);
+const typeLabel = (type: string) => ({ VISIT: '訪問', PHONE: '電話', EMAIL: 'メール', QUOTE: '見積', OTHER: 'その他' }[type] ?? type);
+const resultLabel = (result: string) => ({ PENDING: 'フォロー待ち', OK: 'ポジティブ', NO: 'ネガティブ' }[result] ?? result);
 const typeColor = (type: string) => ({ VISIT: '#e8f0fe', PHONE: '#e6f4ea', EMAIL: '#fff8e1', QUOTE: '#fce8e6', OTHER: '#f3e8fd' }[type] ?? '#f4f6fb');
 const resultColor = (result: string) => ({ PENDING: '#fff8e1', OK: '#e6f4ea', NO: '#fce8e6' }[result] ?? '#f4f6fb');
 
@@ -580,9 +580,9 @@ const tagStyle = (bg: string): React.CSSProperties => ({
   fontSize: '11px', padding: '2px 6px', borderRadius: '4px',
   backgroundColor: bg, color: '#2c3554', fontWeight: 600,
 });
-const statusLabel = (s: string) => ({ DRAFT: '草稿', SENT: '已送出', CONVERTED: '已轉訂單', CANCELLED: '已取消' }[s] ?? s);
+const statusLabel = (s: string) => ({ DRAFT: '下書き', SENT: '送付済み', CONVERTED: '受注済み', CANCELLED: 'キャンセル' }[s] ?? s);
 const statusColor = (s: string) => ({ DRAFT: '#f4f6fb', SENT: '#e8f0fe', CONVERTED: '#e6f4ea', CANCELLED: '#fce8e6' }[s] ?? '#f4f6fb');
-const orderStatusLabel = (s: string) => ({ RECEIVED: '已收單', PREPARING: '備貨中', SHIPPED: '已出貨', DELIVERED: '已送達' }[s] ?? s);
+const orderStatusLabel = (s: string) => ({ RECEIVED: '受注', PREPARING: '準備中', SHIPPED: '出荷済み', DELIVERED: '納品済み' }[s] ?? s);
 const orderStatusColor = (s: string) => ({ RECEIVED: '#f4f6fb', PREPARING: '#fff8e1', SHIPPED: '#e8f0fe', DELIVERED: '#e6f4ea' }[s] ?? '#f4f6fb');
 function ProspectHistory({ prospectId }: { prospectId: number }) {
   const [logs, setLogs] = useState<any[]>([]);
@@ -590,13 +590,13 @@ function ProspectHistory({ prospectId }: { prospectId: number }) {
     axios.get(`${API}/api/contact-logs/prospect/${prospectId}`)
       .then(res => setLogs(res.data));
   }, [prospectId]);
-  if (logs.length === 0) return <div style={{ fontSize: '12px', color: '#96a0b8' }}>尚無開發紀錄</div>;
+  if (logs.length === 0) return <div style={{ fontSize: '12px', color: '#96a0b8' }}>開発記録がありません</div>;
   return (
     <div>
       {logs.map(log => (
         <div key={log.id} style={{ display: 'flex', gap: '12px', marginBottom: '10px', fontSize: '12px' }}>
           <span style={{ color: '#96a0b8', whiteSpace: 'nowrap' }}>
-            {new Date(log.contactedAt).toLocaleDateString('zh-TW')}
+            {new Date(log.contactedAt).toLocaleDateString('ja-JP')}
           </span>
           <span style={tagStyle(typeColor(log.type))}>{typeLabel(log.type)}</span>
           <span style={tagStyle(resultColor(log.result))}>{resultLabel(log.result)}</span>

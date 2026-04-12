@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import styles from './InventoryPanel.module.css';
+import shared from '../../styles/shared.module.css';
 import React from 'react';
 import { useAuth } from '../../AuthContext';
 import { useSearchParams } from 'react-router-dom';
 const API_URL = import.meta.env.VITE_API_URL ?? '';
 axios.defaults.withCredentials = true;
-// ===== 型別定義 =====
+// ===== 型定義 =====
 interface Category {
   id: number;
   name: string;
@@ -74,12 +75,12 @@ interface RecentTransaction {
   };
 }
 
-// ===== 常數 =====
+// ===== 定数 =====
 const STOCK_TYPE_LABEL: Record<StockType, string> = {
-  internal: '自社庫存',
-  outsource_infinite: '委外常備',
-  outsource_warehouse: '委外經倉',
-  outsource_dropship: '委外直送',
+  internal: '自社在庫',
+  outsource_infinite: '外注常備',
+  outsource_warehouse: '外注倉庫',
+  outsource_dropship: '外注直送',
 };
 
 const STOCK_TYPE_COLOR: Record<StockType, string> = {
@@ -89,7 +90,7 @@ const STOCK_TYPE_COLOR: Record<StockType, string> = {
   outsource_dropship: '#9b59b6',
 };
 
-// ===== 主元件 =====
+// ===== メインコンポーネント =====
 function InventoryPanel() {
   const [items, setItems] = useState<ItemWithStock[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -104,18 +105,18 @@ function InventoryPanel() {
   const [editingSafetyId, setEditingSafetyId] = useState<number | null>(null);
   const [editingSafetyValue, setEditingSafetyValue] = useState('');
   const [savingSafetyId, setSavingSafetyId] = useState<number | null>(null);
-  // 廠商情報新增
+  // メーカー情報追加
   const [showInquiryForm, setShowInquiryForm] = useState<number | null>(null); // item.id
   const [newInquiry, setNewInquiry] = useState({ confirmedBy: '', quantity: '', note: '' });
 
-  // 廠商情報歷史
+  // メーカー情報履歴
   const [inquiryHistory, setInquiryHistory] = useState<Record<number, InquiryLog[]>>({});
   const [expandedInquiry, setExpandedInquiry] = useState<number | null>(null); // item.id
 
   const [toast, setToast] = useState<Toast | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ===== 模式切換：overview / stocktake =====
+  // ===== モード切替：overview / stocktake =====
   type PanelMode = 'overview' | 'stocktake';
   const [mode, setMode] = useState<PanelMode>('overview');
 
@@ -124,12 +125,12 @@ function InventoryPanel() {
     if (next === 'stocktake') loadRecentTransactions();
   };
   const [filterCategory, setFilterCategory] = useState<string>('');
-  // ===== 盤點模式 =====
+  // ===== 棚卸モード =====
   const [stocktakeValues, setStocktakeValues] = useState<Record<number, string>>({});
   const [stocktakeOperator, setStocktakeOperator] = useState('');
   const [isSubmittingStocktake, setIsSubmittingStocktake] = useState(false);
 
-  // ===== 最近入庫記錄（盤點 sidebar 用）=====
+  // ===== 最近の入庫記録（棚卸サイドバー用）=====
   const [recentTransactions, setRecentTransactions] = useState<RecentTransaction[]>([]);
 
   const loadRecentTransactions = async () => {
@@ -149,14 +150,14 @@ function InventoryPanel() {
     toastTimer.current = setTimeout(() => setToast(null), 2500);
   };
 
-  // ===== 載入庫存總覽 =====
+  // ===== 在庫一覧読み込み =====
   const loadItems = async () => {
     setIsLoading(true);
     try {
       const res = await axios.get(`${API_URL}/api/inventory/items/overview`);
       setItems(res.data);
     } catch (err) {
-      showToast('載入失敗', 'error');
+      showToast('読み込みに失敗しました', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -170,7 +171,7 @@ function InventoryPanel() {
       .then(res => setManufacturers(res.data))
       .catch(() => { });
   }, []);
-  // ===== 新增廠商情報 =====
+  // ===== メーカー情報追加 =====
   const handleAddInquiry = async (itemId: number) => {
     try {
       await axios.post(`${API_URL}/api/inventory/inquiries`, {
@@ -179,16 +180,16 @@ function InventoryPanel() {
         quantity: newInquiry.quantity ? parseInt(newInquiry.quantity) : null,
         note: newInquiry.note || null,
       });
-      showToast('情報已記錄');
+      showToast('情報を記録しました');
       setShowInquiryForm(null);
       setNewInquiry({ confirmedBy: '', quantity: '', note: '' });
-      loadItems(); // 重新載入，更新 latestInquiry
+      loadItems(); // 再読み込み、latestInquiry を更新
     } catch (err) {
-      showToast('記錄失敗', 'error');
+      showToast('記録に失敗しました', 'error');
     }
   };
 
-  // ===== 載入廠商情報歷史 =====
+  // ===== メーカー情報履歴読み込み =====
   const handleToggleInquiryHistory = async (itemId: number) => {
     if (expandedInquiry === itemId) {
       setExpandedInquiry(null);
@@ -199,7 +200,7 @@ function InventoryPanel() {
       setInquiryHistory(prev => ({ ...prev, [itemId]: res.data }));
       setExpandedInquiry(itemId);
     } catch (err) {
-      showToast('歷史載入失敗', 'error');
+      showToast('履歴の読み込みに失敗しました', 'error');
     }
   };
 
@@ -210,7 +211,7 @@ function InventoryPanel() {
 
   const handleSaveSafety = async (item: InventoryItem) => {
     const val = editingSafetyValue === '' ? null : parseInt(editingSafetyValue, 10);
-    if (val !== null && (isNaN(val) || val < 0)) { showToast('請輸入 0 以上的整數', 'error'); return; }
+    if (val !== null && (isNaN(val) || val < 0)) { showToast('0以上の整数を入力してください', 'error'); return; }
     setSavingSafetyId(item.id);
     setEditingSafetyId(null);
     try {
@@ -220,16 +221,16 @@ function InventoryPanel() {
       setItems(prev => prev.map(row =>
         row.item.id === item.id ? { ...row, item: { ...row.item, safetyStock: val } } : row
       ));
-      showToast(val !== null ? `安全庫存設為 ${val} ${item.unit}` : '安全庫存已清除');
-    } catch (err) { showToast('儲存失敗', 'error'); }
+      showToast(val !== null ? `安全在庫を ${val} ${item.unit} に設定しました` : '安全在庫をクリアしました');
+    } catch (err) { showToast('保存に失敗しました', 'error'); }
     finally { setSavingSafetyId(null); }
   };
 
-  // ===== 盤點提交 =====
+  // ===== 棚卸送信 =====
   const handleSubmitStocktake = async () => {
-    if (!stocktakeOperator.trim()) { showToast('請輸入操作者姓名', 'error'); return; }
+    if (!stocktakeOperator.trim()) { showToast('担当者名を入力してください', 'error'); return; }
     const entries = Object.entries(stocktakeValues).filter(([, v]) => v !== '');
-    if (entries.length === 0) { showToast('尚未輸入任何盤點數量', 'error'); return; }
+    if (entries.length === 0) { showToast('棚卸数量が入力されていません', 'error'); return; }
     setIsSubmittingStocktake(true);
     try {
       for (const [itemId, val] of entries) {
@@ -239,16 +240,16 @@ function InventoryPanel() {
           itemId: parseInt(itemId),
           actualQuantity: actualQty,
           operatedBy: stocktakeOperator,
-          note: '盤點調整',
+          note: '棚卸調整',
         });
       }
-      showToast(`盤點完成，共 ${entries.length} 筆`);
+      showToast(`棚卸完了、${entries.length} 件を処理しました`);
       setStocktakeValues({});
       setStocktakeOperator('');
       setMode('overview');
       loadItems();
     } catch (err) {
-      showToast('盤點提交失敗', 'error');
+      showToast('棚卸の送信に失敗しました', 'error');
     } finally {
       setIsSubmittingStocktake(false);
     }
@@ -256,7 +257,7 @@ function InventoryPanel() {
 
 
 
-  // ===== 過濾 =====
+  // ===== フィルター =====
   const filteredItems = items.filter(i => {
     if (filterType && i.item.stockType !== filterType) return false;
     if (filterManufacturer && i.item.product?.manufacturer?.id !== filterManufacturer) return false;
@@ -267,7 +268,7 @@ function InventoryPanel() {
     }
     return true;
   });
-  // ===== 庫存狀態顯示 =====
+  // ===== 在庫状況表示 =====
   const renderStockStatus = (row: ItemWithStock) => {
     const { item, stock, latestInquiry } = row;
 
@@ -276,7 +277,7 @@ function InventoryPanel() {
       case 'outsource_warehouse': {
         const qty = stock?.quantity ?? 0;
         const isLow = item.safetyStock !== null && qty <= item.safetyStock;
-        const label = item.stockType === 'outsource_warehouse' ? `${qty} ${item.unit}（估算）` : `${qty} ${item.unit}`;
+        const label = item.stockType === 'outsource_warehouse' ? `${qty} ${item.unit}（概算）` : `${qty} ${item.unit}`;
         return (
           <span className={isLow ? styles.stockLow : styles.stockNormal}>
             {isLow && '⚠ '}
@@ -288,11 +289,11 @@ function InventoryPanel() {
         return <span className={styles.stockInfinite}>常備品</span>;
 
       case 'outsource_dropship':
-        if (!latestInquiry) return <span className={styles.stockNoData}>尚無情報</span>;
+        if (!latestInquiry) return <span className={styles.stockNoData}>情報なし</span>;
         const dateStr = new Date(latestInquiry.confirmedAt).toLocaleDateString('ja-JP');
         return (
           <span className={styles.stockDropship}>
-            {latestInquiry.quantity !== null ? `${latestInquiry.quantity} ${item.unit}` : '不確定'}
+            {latestInquiry.quantity !== null ? `${latestInquiry.quantity} ${item.unit}` : '不明'}
             <span className={styles.stockDropshipDate}>（{dateStr} 確認）</span>
           </span>
         );
@@ -303,41 +304,41 @@ function InventoryPanel() {
   const colSpan = canSetSafetyStock ? 6 : 5;
 
   return (
-    <div className={styles.root}>
+    <div className={shared.root}>
 
-      <header className={styles.header}>
-        <div className={styles.headerLogo}>
-          <div className={styles.headerLogoMark}>PM</div>
+      <header className={shared.header}>
+        <div className={shared.headerLogo}>
+          <div className={shared.headerLogoMark}>PM</div>
           PriceMatrix
         </div>
-        <div className={styles.headerRight}>
-          <div className={styles.headerSystemLabel}>倉儲系統</div>
+        <div className={shared.headerRight}>
+          <div className={shared.headerSystemLabel}>在庫管理</div>
           <button
-            className={styles.btnSearch}
+            className={shared.btnSearch}
             style={{ width: 'auto', padding: '6px 14px', backgroundColor: mode === 'stocktake' ? '#e67e22' : undefined, borderColor: mode === 'stocktake' ? '#e67e22' : undefined }}
             onClick={() => switchMode(mode === 'stocktake' ? 'overview' : 'stocktake')}
           >
-            📋 盤點模式
+            📋 棚卸モード
           </button>
           <button
-            className={styles.btnSearch}
+            className={shared.btnSearch}
             style={{ width: 'auto', padding: '6px 14px' }}
             onClick={() => window.location.href = '/inventory/scan'}
           >
-            📷 掃碼入出庫
+            📷 バーコードスキャン
           </button>
         </div>
       </header>
 
-      <div className={styles.layout}>
-        <aside className={styles.sidebar}>
+      <div className={shared.layout}>
+        <aside className={shared.sidebar}>
 
-          {/* ===== 盤點模式：最近入庫記錄 ===== */}
+          {/* ===== 棚卸モード：最近の入庫記録 ===== */}
           {mode === 'stocktake' && (
             <div>
-              <div className={styles.sectionLabel}>最近入庫（7天）</div>
+              <div className={shared.sectionLabel}>直近の入庫（7日間）</div>
               {recentTransactions.length === 0 ? (
-                <div style={{ fontSize: '12px', color: '#96a0b8', padding: '8px 0' }}>尚無記錄</div>
+                <div style={{ fontSize: '12px', color: '#96a0b8', padding: '8px 0' }}>記録なし</div>
               ) : (
                 recentTransactions.map(tx => {
                   const isAdjust = tx.transactionType === 'ADJUST';
@@ -355,7 +356,7 @@ function InventoryPanel() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
                         <span style={{ fontSize: '11px', color: '#96a0b8' }}>{date}</span>
                         <span style={{ fontSize: '11px', color: '#96a0b8' }}>
-                          {isAdjust ? '盤點' : (tx.batchId ? '批次' : '入庫')}
+                          {isAdjust ? '棚卸' : (tx.batchId ? 'バッチ' : '入庫')}
                         </span>
                       </div>
                     </div>
@@ -365,14 +366,14 @@ function InventoryPanel() {
             </div>
           )}
 
-          {/* ===== 通常模式：篩選條件 ===== */}
+          {/* ===== 通常モード：フィルター条件 ===== */}
           {mode === 'overview' && (
             <div>
-              <div className={styles.sectionLabel}>篩選條件</div>
+              <div className={shared.sectionLabel}>フィルター</div>
 
-              {/* 全部 */}
+              {/* すべて */}
               <div
-                className={styles.statItem}
+                className={shared.statItem}
                 onClick={() => setFilterType('')}
                 style={{
                   cursor: 'pointer',
@@ -385,17 +386,17 @@ function InventoryPanel() {
                 }}
               >
                 <span
-                  className={styles.filterDot}
+                  className={shared.filterDot}
                   style={{ backgroundColor: '#5a6480' }}
                 />
                 <span
-                  className={styles.statLabel}
+                  className={shared.statLabel}
                   style={{
                     fontWeight: filterType === '' ? 600 : undefined,
                     color: filterType === '' ? '#5a6480' : undefined,
                   }}
                 >
-                  全部
+                  すべて
                 </span>
               </div>
 
@@ -404,7 +405,7 @@ function InventoryPanel() {
                 return (
                   <div
                     key={k}
-                    className={styles.statItem}
+                    className={shared.statItem}
                     onClick={() => setFilterType(isSelected ? '' : k as StockType)}
                     style={{
                       cursor: 'pointer',
@@ -417,11 +418,11 @@ function InventoryPanel() {
                     }}
                   >
                     <span
-                      className={styles.filterDot}
+                      className={shared.filterDot}
                       style={{ backgroundColor: STOCK_TYPE_COLOR[k] }}
                     />
                     <span
-                      className={styles.statLabel}
+                      className={shared.statLabel}
                       style={{
                         fontWeight: isSelected ? 600 : undefined,
                         color: isSelected ? STOCK_TYPE_COLOR[k] : undefined,
@@ -432,11 +433,11 @@ function InventoryPanel() {
                   </div>
                 );
               })}
-              <div className={styles.sectionLabel} style={{ marginTop: '16px' }}>廠商</div>
+              <div className={shared.sectionLabel} style={{ marginTop: '16px' }}>メーカー</div>
 
-              {/* 全部 */}
+              {/* すべて */}
               <div
-                className={styles.statItem}
+                className={shared.statItem}
                 onClick={() => setFilterManufacturer(null)}
                 style={{
                   cursor: 'pointer',
@@ -448,14 +449,14 @@ function InventoryPanel() {
                   transition: 'all 0.15s',
                 }}
               >
-                <span className={styles.statLabel} style={{ fontWeight: filterManufacturer === null ? 600 : undefined }}>
-                  全部
+                <span className={shared.statLabel} style={{ fontWeight: filterManufacturer === null ? 600 : undefined }}>
+                  すべて
                 </span>
               </div>
               {manufacturers.map(m => (
                 <div
                   key={m.id}
-                  className={styles.statItem}
+                  className={shared.statItem}
                   onClick={() => setFilterManufacturer(filterManufacturer === m.id ? null : m.id)}
                   style={{
                     cursor: 'pointer',
@@ -467,16 +468,16 @@ function InventoryPanel() {
                     transition: 'all 0.15s',
                   }}
                 >
-                  <span className={styles.statLabel}
+                  <span className={shared.statLabel}
                     style={{ fontWeight: filterManufacturer === m.id ? 600 : undefined }}>
                     {m.name}
                   </span>
                 </div>
               ))}
               <button
-                className={styles.btnSearch}
+                className={shared.btnSearch}
                 onClick={() => {
-                  if (window.confirm('重新從伺服器載入資料？')) {
+                  if (window.confirm('サーバーからデータを再読み込みしますか？')) {
                     loadItems();
                     setFilterManufacturer(null);
                     setFilterCategory('');
@@ -486,41 +487,41 @@ function InventoryPanel() {
                 disabled={isLoading}
                 style={{ marginTop: '12px' }}
               >
-                {isLoading ? '載入中…' : '重新整理'}
+                {isLoading ? '読み込み中…' : '更新'}
               </button>
             </div>
           )}
         </aside>
 
-        <main className={styles.main}>
+        <main className={shared.main}>
 
-          {/* ===== 盤點模式 ===== */}
+          {/* ===== 棚卸モード ===== */}
           {mode === 'stocktake' && (
             <div>
-              <div className={styles.mainTitle}>📋 盤點模式</div>
-              <div className={styles.mainSubtitle}>
-                輸入實際盤點數量，系統自動計算差異並記錄 ADJUST 異動。
+              <div className={shared.mainTitle}>📋 棚卸モード</div>
+              <div className={shared.mainSubtitle}>
+                実際の棚卸数量を入力すると、システムが差異を自動計算して ADJUST として記録します。
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '16px 0' }}>
-                <label style={{ fontSize: '13px', color: '#5a6480', whiteSpace: 'nowrap' }}>操作者</label>
+                <label style={{ fontSize: '13px', color: '#5a6480', whiteSpace: 'nowrap' }}>担当者</label>
                 <input
-                  className={styles.formInput}
+                  className={shared.formInput}
                   style={{ width: '160px' }}
-                  placeholder="姓名"
+                  placeholder="氏名"
                   value={stocktakeOperator}
                   onChange={e => setStocktakeOperator(e.target.value)}
                 />
               </div>
-              <div className={styles.tableWrap}>
-                <table className={styles.table}>
+              <div className={shared.tableWrap}>
+                <table className={shared.table}>
                   <thead>
                     <tr>
-                      <th className={styles.th}>商品</th>
-                      <th className={styles.th}>分類</th>
-                      <th className={styles.th}>廠商</th>
-                      <th className={styles.th}>目前庫存</th>
-                      <th className={styles.th}>實際數量（盤點）</th>
-                      <th className={styles.th}>差異</th>
+                      <th className={shared.th}>商品</th>
+                      <th className={shared.th}>カテゴリ</th>
+                      <th className={shared.th}>メーカー</th>
+                      <th className={shared.th}>現在庫</th>
+                      <th className={shared.th}>実数（棚卸）</th>
+                      <th className={shared.th}>差異</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -533,11 +534,11 @@ function InventoryPanel() {
                         const actual = inputVal !== '' ? parseInt(inputVal, 10) : null;
                         const diff = actual !== null && !isNaN(actual) ? actual - current : null;
                         const isLast = idx === arr.length - 1;
-                        const tdClass = isLast ? styles.tdLast : styles.td;
+                        const tdClass = isLast ? shared.tdLast : shared.td;
                         return (
                           <tr key={item.id}>
                             <td className={tdClass}>{item.product.name}</td>
-                            <td className={tdClass}><span className={styles.badge}>{item.product.category?.name ?? '—'}</span></td>
+                            <td className={tdClass}><span className={shared.badge}>{item.product.category?.name ?? '—'}</span></td>
                             <td className={tdClass}>
                               {item.product.manufacturer?.name ?? '—'}
                             </td>
@@ -568,18 +569,18 @@ function InventoryPanel() {
               </div>
               <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
                 <button
-                  className={styles.btnConfirm}
+                  className={shared.btnConfirm}
                   onClick={handleSubmitStocktake}
                   disabled={isSubmittingStocktake}
                 >
-                  {isSubmittingStocktake ? '送出中…' : '確認送出盤點'}
+                  {isSubmittingStocktake ? '送信中…' : '棚卸を確定する'}
                 </button>
                 <button
-                  className={styles.btnConfirm}
+                  className={shared.btnConfirm}
                   style={{ backgroundColor: 'transparent', color: '#5a6480', boxShadow: 'none', border: '1px solid #d0d7e8' }}
                   onClick={() => { setMode('overview'); setStocktakeValues({}); setStocktakeOperator(''); }}
                 >
-                  取消
+                  キャンセル
                 </button>
               </div>
             </div>
@@ -587,20 +588,20 @@ function InventoryPanel() {
 
 
 
-          {/* ===== 庫存總覽（預設） ===== */}
+          {/* ===== 在庫一覧（デフォルト）===== */}
           {mode === 'overview' && (<div>
             <div>
-              <div className={styles.mainTitle}>庫存總覽</div>
-              <div className={styles.mainSubtitle}>
-                ⚠ 委外直送數量為廠商告知的參考值，需電話確認
+              <div className={shared.mainTitle}>在庫一覧</div>
+              <div className={shared.mainSubtitle}>
+                ⚠ 外注直送の数量はメーカー申告による参考値です。電話での確認が必要です
               </div>
             </div>
-            {/* 分類 Tab */}
+            {/* カテゴリタブ */}
             <div className={styles.categoryTabs}>
               <button
                 className={filterCategory === '' ? styles.categoryTabActive : styles.categoryTab}
                 onClick={() => setFilterCategory('')}
-              >全部</button>
+              >すべて</button>
               {[...new Set(items.map(i => i.item.product?.category?.name).filter(Boolean))].map(cat => (
                 <button
                   key={cat}
@@ -609,24 +610,24 @@ function InventoryPanel() {
                 >{cat}</button>
               ))}
             </div>
-            <div className={styles.tableWrap}>
-              <table className={styles.table}>
+            <div className={shared.tableWrap}>
+              <table className={shared.table}>
                 <thead>
                   <tr>
-                    <th className={styles.th}>商品</th>
-                    <th className={styles.th}>分類</th>
-                    <th className={styles.th}>廠商</th>
-                    <th className={styles.th}>形態</th>
-                    <th className={styles.th}>庫存狀況</th>
-                    {canSetSafetyStock && <th className={styles.th}>安全庫存</th>}
-                    <th className={styles.th}>操作</th>
+                    <th className={shared.th}>商品</th>
+                    <th className={shared.th}>カテゴリ</th>
+                    <th className={shared.th}>メーカー</th>
+                    <th className={shared.th}>形態</th>
+                    <th className={shared.th}>在庫状況</th>
+                    {canSetSafetyStock && <th className={shared.th}>安全在庫</th>}
+                    <th className={shared.th}>操作</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredItems.length === 0 && (
                     <tr>
-                      <td colSpan={colSpan} className={styles.td} style={{ textAlign: 'center', color: '#96a0b8', padding: '32px' }}>
-                        {isLoading ? '載入中…' : '無資料'}
+                      <td colSpan={colSpan} className={shared.td} style={{ textAlign: 'center', color: '#96a0b8', padding: '32px' }}>
+                        {isLoading ? '読み込み中…' : 'データなし'}
                       </td>
                     </tr>
                   )}
@@ -634,7 +635,7 @@ function InventoryPanel() {
                   {filteredItems.map((row, idx) => {
                     const { item } = row;
                     const isLast = idx === filteredItems.length - 1;
-                    const tdClass = isLast ? styles.tdLast : styles.td;
+                    const tdClass = isLast ? shared.tdLast : shared.td;
                     const isDropship = item.stockType === 'outsource_dropship';
                     const isExpanded = expandedInquiry === item.id;
                     const isEditingSafety = editingSafetyId === item.id;
@@ -647,7 +648,7 @@ function InventoryPanel() {
                             <div style={{ fontWeight: 500 }}>{item.product.name}</div>
                           </td>
                           <td className={tdClass}>
-                            <span className={styles.badge}>{item.product.category?.name ?? '—'}</span>
+                            <span className={shared.badge}>{item.product.category?.name ?? '—'}</span>
                           </td>
                           <td className={tdClass}>
                             {item.product.manufacturer?.name ?? '—'}
@@ -687,9 +688,9 @@ function InventoryPanel() {
                                         className={styles.safetyInput}
                                       />
                                       <span className={styles.safetyUnit}>{item.unit}</span>
-                                      <button className={styles.btnConfirm} onClick={() => handleSaveSafety(item)}>確認</button>
+                                      <button className={shared.btnConfirm} onClick={() => handleSaveSafety(item)}>確定</button>
                                       <button
-                                        className={styles.btnIcon}
+                                        className={shared.btnIcon}
                                         style={{ color: '#c0392b', borderColor: '#e8b4b0' }}
                                         onClick={() => setEditingSafetyId(null)}
                                       >✕</button>
@@ -697,10 +698,10 @@ function InventoryPanel() {
                                   ) : (
                                     <span
                                       onClick={() => startEditSafety(item)}
-                                      title="點擊設定安全庫存下限"
+                                      title="クリックして安全在庫下限を設定"
                                       className={item.safetyStock !== null ? styles.safetyDisplay : styles.safetyDisplayEmpty}
                                     >
-                                      {isSavingSafety ? '…' : item.safetyStock !== null ? `${item.safetyStock} ${item.unit}` : '— 點擊設定'}
+                                      {isSavingSafety ? '…' : item.safetyStock !== null ? `${item.safetyStock} ${item.unit}` : '— クリックして設定'}
                                       {!isSavingSafety && <span className={styles.safetyEditIcon}>✎</span>}
                                     </span>
                                   )}
@@ -714,13 +715,13 @@ function InventoryPanel() {
                             {isDropship && (
                               <div style={{ display: 'flex', gap: '6px' }}>
                                 <button
-                                  className={styles.btnIcon}
-                                  title="新增情報"
+                                  className={shared.btnIcon}
+                                  title="情報を追加"
                                   onClick={() => setShowInquiryForm(showInquiryForm === item.id ? null : item.id)}
                                 >＋</button>
                                 <button
-                                  className={styles.btnIcon}
-                                  title="查看歷史"
+                                  className={shared.btnIcon}
+                                  title="履歴を表示"
                                   style={{ color: isExpanded ? '#4a78c4' : undefined }}
                                   onClick={() => handleToggleInquiryHistory(item.id)}
                                 >≡</button>
@@ -729,25 +730,25 @@ function InventoryPanel() {
                           </td>
                         </tr>
 
-                        {/* 新增廠商情報表單 */}
+                        {/* メーカー情報追加フォーム */}
                         {isDropship && showInquiryForm === item.id && (
                           <tr key={`form-${item.id}`}>
                             <td colSpan={colSpan} className={styles.inquiryFormCell}>
                               <div className={styles.inquiryFormRow}>
                                 <div className={styles.inquiryFormField}>
-                                  <label className={styles.formLabel}>確認者</label>
+                                  <label className={shared.formLabel}>確認者</label>
                                   <input
-                                    className={styles.formInput}
+                                    className={shared.formInput}
                                     style={{ width: '100px' }}
-                                    placeholder="姓名"
+                                    placeholder="氏名"
                                     value={newInquiry.confirmedBy}
                                     onChange={e => setNewInquiry({ ...newInquiry, confirmedBy: e.target.value })}
                                   />
                                 </div>
                                 <div className={styles.inquiryFormField}>
-                                  <label className={styles.formLabel}>數量（可空白）</label>
+                                  <label className={shared.formLabel}>数量（空白可）</label>
                                   <input
-                                    className={styles.formInput}
+                                    className={shared.formInput}
                                     style={{ width: '80px' }}
                                     type="number"
                                     placeholder="—"
@@ -756,46 +757,46 @@ function InventoryPanel() {
                                   />
                                 </div>
                                 <div className={styles.inquiryFormField}>
-                                  <label className={styles.formLabel}>備註</label>
+                                  <label className={shared.formLabel}>備考</label>
                                   <input
-                                    className={styles.formInput}
+                                    className={shared.formInput}
                                     style={{ width: '180px' }}
-                                    placeholder="例：月末補貨"
+                                    placeholder="例：月末入荷予定"
                                     value={newInquiry.note}
                                     onChange={e => setNewInquiry({ ...newInquiry, note: e.target.value })}
                                   />
                                 </div>
                                 <div className={styles.inquiryFormActions}>
                                   <button
-                                    className={styles.btnConfirm}
+                                    className={shared.btnConfirm}
                                     onClick={() => handleAddInquiry(item.id)}
                                     disabled={!newInquiry.confirmedBy}
-                                  >記錄</button>
+                                  >記録</button>
                                   <button
-                                    className={styles.btnConfirm}
+                                    className={shared.btnConfirm}
                                     style={{ backgroundColor: 'transparent', color: '#5a6480', boxShadow: 'none', border: '1px solid #d0d7e8' }}
                                     onClick={() => { setShowInquiryForm(null); setNewInquiry({ confirmedBy: '', quantity: '', note: '' }); }}
-                                  >取消</button>
+                                  >キャンセル</button>
                                 </div>
                               </div>
                             </td>
                           </tr>
                         )}
 
-                        {/* 廠商情報歷史 */}
+                        {/* メーカー情報履歴 */}
                         {isDropship && isExpanded && (
                           <tr key={`history-${item.id}`}>
                             <td colSpan={colSpan} className={styles.inquiryHistoryCell}>
-                              <div className={styles.inquiryHistoryTitle}>廠商情報歷史</div>
+                              <div className={styles.inquiryHistoryTitle}>メーカー情報履歴</div>
                               {(inquiryHistory[item.id] || []).length === 0 ? (
-                                <div className={styles.inquiryHistoryEmpty}>尚無記錄</div>
+                                <div className={styles.inquiryHistoryEmpty}>記録なし</div>
                               ) : (
                                 (inquiryHistory[item.id] || []).map(log => (
                                   <div key={log.id} className={styles.inquiryLogRow}>
                                     <span className={styles.inquiryLogDate}>{fmt(log.confirmedAt)}</span>
                                     <span className={styles.inquiryLogName}>{log.confirmedBy}</span>
                                     <span className={styles.inquiryLogQty}>
-                                      {log.quantity !== null ? `${log.quantity} ${item.unit}` : '不確定'}
+                                      {log.quantity !== null ? `${log.quantity} ${item.unit}` : '不明'}
                                     </span>
                                     {log.note && <span className={styles.inquiryLogNote}>{log.note}</span>}
                                   </div>
@@ -816,7 +817,7 @@ function InventoryPanel() {
       </div>
 
       {toast && (
-        <div className={`${styles.toast} ${toast.type === 'error' ? styles.toastError : styles.toastSuccess}`}>
+        <div className={`${shared.toast} ${toast.type === 'error' ? shared.toastError : shared.toastSuccess}`}>
           {toast.type === 'error' ? '✕' : '✓'} {toast.message}
         </div>
       )}

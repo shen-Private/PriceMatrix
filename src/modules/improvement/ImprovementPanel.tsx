@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../AuthContext';
 import React from 'react';
-
+import shared from '../../styles/shared.module.css';
 const API = import.meta.env.VITE_API_URL ?? '';
 
 // ── Interfaces ────────────────────────────────────────────
@@ -84,13 +84,13 @@ const emptyForm = (): ProposalForm => ({
 // ── Component ─────────────────────────────────────────────
 
 export default function ImprovementPanel() {
-    const { } = useAuth();
+    const { can } = useAuth();
     const [proposals, setProposals] = useState<Proposal[]>([]);
     const [filterStatus, setFilterStatus] = useState<string>('ALL');
     const [expandedId, setExpandedId] = useState<number | null>(null);
     const [activeTab, setActiveTab] = useState<'detail' | 'milestones'>('detail');
 
-    // 新增/編輯提案
+    // 提案の新規作成／編集
     const [showForm, setShowForm] = useState(false);
     const [editTarget, setEditTarget] = useState<Proposal | null>(null);
     const [form, setForm] = useState<ProposalForm>(emptyForm());
@@ -98,16 +98,16 @@ export default function ImprovementPanel() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    // 審核 Modal（主管用）
+    // 承認モーダル（管理者用）
     const [reviewTarget, setReviewTarget] = useState<Proposal | null>(null);
     const [reviewComment, setReviewComment] = useState('');
     const [reviewLoading, setReviewLoading] = useState(false);
 
-    // Milestone 新增
+    // マイルストーン追加
     const [milestoneForm, setMilestoneForm] = useState({ title: '', targetDate: '' });
     const [milestoneLoading, setMilestoneLoading] = useState(false);
 
-    // 頻測報告新增
+    // 進捗レポート追加
     const [reportForms, setReportForms] = useState<Record<number, { note: string; url: string; urlName: string }>>({});
     const [reportLoading, setReportLoading] = useState(false);
 
@@ -165,7 +165,7 @@ export default function ImprovementPanel() {
     };
 
     const handleSave = async () => {
-        if (!form.title.trim()) { setError('提案標題為必填'); return; }
+        if (!form.title.trim()) { setError('提案タイトルは必須です'); return; }
         setLoading(true);
         try {
             const payload = {
@@ -181,7 +181,7 @@ export default function ImprovementPanel() {
             setShowForm(false);
             fetchProposals();
         } catch (e: any) {
-            setError(e.response?.data?.message ?? '儲存失敗');
+            setError(e.response?.data?.message ?? '保存に失敗しました');
         } finally {
             setLoading(false);
         }
@@ -199,7 +199,7 @@ export default function ImprovementPanel() {
         setForm(f => ({ ...f, members: f.members.filter(m => m !== username) }));
     };
 
-    // ── 狀態流轉 ───────────────────────────────────────────
+    // ── ステータス遷移 ─────────────────────────────────────
 
     const handleSubmit = async (id: number) => {
         await axios.post(`${API}/api/improvements/${id}/submit`);
@@ -207,7 +207,7 @@ export default function ImprovementPanel() {
     };
 
     const handleCancel = async (id: number) => {
-        if (!window.confirm('確定要撤銷這個提案嗎？')) return;
+        if (!window.confirm('この提案を取り下げますか？')) return;
         await axios.post(`${API}/api/improvements/${id}/cancel`);
         fetchProposals();
     };
@@ -247,7 +247,7 @@ export default function ImprovementPanel() {
     };
 
     const handleCompleteMilestone = async (milestoneId: number) => {
-        if (!window.confirm('確定標記此階段為完成？')) return;
+        if (!window.confirm('このマイルストーンを完了としてマークしますか？')) return;
         await axios.post(`${API}/api/improvements/milestones/${milestoneId}/complete`);
         fetchProposals();
     };
@@ -275,15 +275,15 @@ export default function ImprovementPanel() {
 
     return (
         <div style={{ padding: '24px', maxWidth: '1000px', margin: '0 auto' }}>
-            {/* 標題列 */}
+            {/* タイトル行 */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#2c3554', margin: 0 }}>改善提案</h2>
                 <button onClick={openCreate} style={btnStyle('#4a78c4', '#fff')}>
-                    ＋ 新增提案
+                    ＋ 新規提案
                 </button>
             </div>
 
-            {/* 狀態篩選 */}
+            {/* ステータスフィルター */}
             <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
                 {['ALL', 'DRAFT', 'PENDING_REVIEW', 'ACTIVE', 'COMPLETED', 'REJECTED', 'CANCELLED'].map(s => (
                     <button key={s} onClick={() => setFilterStatus(s)}
@@ -293,14 +293,14 @@ export default function ImprovementPanel() {
                 ))}
             </div>
 
-            {/* 提案列表 */}
+            {/* 提案一覧 */}
             <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: '#fff', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                 <thead>
                     <tr style={{ backgroundColor: '#f4f6fb' }}>
-                        <th style={th()}>提案標題</th>
-                        <th style={th()}>代表者</th>
-                        <th style={th()}>截止日</th>
-                        <th style={th()}>狀態</th>
+                        <th style={th()}>提案タイトル</th>
+                        <th style={th()}>担当者</th>
+                        <th style={th()}>期限日</th>
+                        <th style={th()}>ステータス</th>
                         <th style={th()}>操作</th>
                     </tr>
                 </thead>
@@ -319,21 +319,21 @@ export default function ImprovementPanel() {
                                 </td>
                                 <td style={td()} onClick={e => e.stopPropagation()}>
                                     <div style={{ display: 'flex', gap: '6px' }}>
-                                        {/* DRAFT：可編輯、送審、撤銷 */}
+                                        {/* 下書き：編集・申請・取り下げ可 */}
                                         {p.status === 'DRAFT' && (
                                             <>
-                                                <button onClick={() => openEdit(p)} style={btnStyle('#f4f6fb', '#5a6480')}>編輯</button>
-                                                <button onClick={() => handleSubmit(p.id)} style={btnStyle('#4a78c4', '#fff')}>送審</button>
-                                                <button onClick={() => handleCancel(p.id)} style={btnStyle('#fff0f0', '#e05c5c')}>撤銷</button>
+                                                <button onClick={() => openEdit(p)} style={btnStyle('#f4f6fb', '#5a6480')}>編集</button>
+                                                <button onClick={() => handleSubmit(p.id)} style={btnStyle('#4a78c4', '#fff')}>申請</button>
+                                                <button onClick={() => handleCancel(p.id)} style={btnStyle('#fff0f0', '#e05c5c')}>取り下げ</button>
                                             </>
                                         )}
-                                        {p.status === 'PENDING_REVIEW' && (
+                                        {p.status === 'PENDING_REVIEW' && can('manage_users') && (
                                             <button onClick={() => { setReviewTarget(p); setReviewComment(''); }}
-                                                style={btnStyle('#fff8e1', '#b45309')}>審核</button>
+                                                style={btnStyle('#fff8e1', '#b45309')}>承認審査</button>
                                         )}
-                                        {/* ACTIVE：可撤銷 */}
+                                        {/* 実行中：取り下げ可 */}
                                         {p.status === 'ACTIVE' && (
-                                            <button onClick={() => handleCancel(p.id)} style={btnStyle('#fff0f0', '#e05c5c')}>撤銷</button>
+                                            <button onClick={() => handleCancel(p.id)} style={btnStyle('#fff0f0', '#e05c5c')}>取り下げ</button>
                                         )}
                                     </div>
                                 </td>
@@ -343,40 +343,40 @@ export default function ImprovementPanel() {
                             {expandedId === p.id && (
                                 <tr>
                                     <td colSpan={5} style={{ backgroundColor: '#f9fafd', padding: '16px 20px' }}>
-                                        {/* Tab */}
+                                        {/* タブ */}
                                         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                                            <button style={tabStyle(activeTab === 'detail')} onClick={() => setActiveTab('detail')}>提案內容</button>
-                                            <button style={tabStyle(activeTab === 'milestones')} onClick={() => setActiveTab('milestones')}>執行階段</button>
+                                            <button style={tabStyle(activeTab === 'detail')} onClick={() => setActiveTab('detail')}>提案内容</button>
+                                            <button style={tabStyle(activeTab === 'milestones')} onClick={() => setActiveTab('milestones')}>実行フェーズ</button>
                                         </div>
 
-                                        {/* 提案內容 Tab */}
+                                        {/* 提案内容タブ */}
                                         {activeTab === 'detail' && (
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                                <InfoRow label="現狀描述" value={p.description} />
-                                                <InfoRow label="預期效果" value={p.goal} />
+                                                <InfoRow label="現状説明" value={p.description} />
+                                                <InfoRow label="期待効果" value={p.goal} />
                                                 <div style={{ display: 'flex', gap: '24px' }}>
                                                     <InfoRow label="改善前" value={p.metricBefore != null ? `${p.metricBefore} ${p.metricUnit ?? ''}` : '—'} />
-                                                    <InfoRow label="目標" value={p.metricAfterGoal != null ? `${p.metricAfterGoal} ${p.metricUnit ?? ''}` : '—'} />
-                                                    <InfoRow label="實際達成" value={p.metricActual != null ? `${p.metricActual} ${p.metricUnit ?? ''}` : '—'} />
+                                                    <InfoRow label="目標値" value={p.metricAfterGoal != null ? `${p.metricAfterGoal} ${p.metricUnit ?? ''}` : '—'} />
+                                                    <InfoRow label="実績値" value={p.metricActual != null ? `${p.metricActual} ${p.metricUnit ?? ''}` : '—'} />
                                                 </div>
                                                 <div>
-                                                    <div style={{ fontSize: '12px', color: '#5a6480', fontWeight: 600, marginBottom: '6px' }}>協作成員</div>
+                                                    <div style={{ fontSize: '12px', color: '#5a6480', fontWeight: 600, marginBottom: '6px' }}>協力メンバー</div>
                                                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                                         {p.members?.length > 0
                                                             ? p.members.map(m => (
                                                                 <span key={m.id} style={tagStyle('#e8f0fe')}>{m.username}</span>
                                                             ))
-                                                            : <span style={{ fontSize: '13px', color: '#96a0b8' }}>無</span>
+                                                            : <span style={{ fontSize: '13px', color: '#96a0b8' }}>なし</span>
                                                         }
                                                     </div>
                                                 </div>
                                                 {p.reviewComment && (
-                                                    <InfoRow label="審核意見" value={p.reviewComment} />
+                                                    <InfoRow label="審査コメント" value={p.reviewComment} />
                                                 )}
                                             </div>
                                         )}
 
-                                        {/* 執行階段 Tab */}
+                                        {/* 実行フェーズタブ */}
                                         {activeTab === 'milestones' && (
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                                 {p.milestones?.map(m => (
@@ -396,18 +396,18 @@ export default function ImprovementPanel() {
                                                                 )}
                                                                 {m.status !== 'DONE' && p.status === 'ACTIVE' && (
                                                                     <button onClick={() => handleCompleteMilestone(m.id)}
-                                                                        style={btnStyle('#e6f4ea', '#1a7f37')}>標記完成</button>
+                                                                        style={btnStyle('#e6f4ea', '#1a7f37')}>完了にする</button>
                                                                 )}
                                                             </div>
                                                         </div>
 
-                                                        {/* 頻測報告列表 */}
+                                                        {/* 進捗レポート一覧 */}
                                                         {m.reports?.length > 0 && (
                                                             <div style={{ marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                                                 {m.reports.map(r => (
                                                                     <div key={r.id} style={{ fontSize: '12px', color: '#5a6480', backgroundColor: '#f4f6fb', borderRadius: '6px', padding: '8px 10px' }}>
                                                                         <div style={{ color: '#2c3554', marginBottom: '2px' }}>{r.note}</div>
-                                                                        <div style={{ color: '#96a0b8' }}>{r.reportedBy} · {new Date(r.reportedAt).toLocaleDateString('zh-TW')}</div>
+                                                                        <div style={{ color: '#96a0b8' }}>{r.reportedBy} · {new Date(r.reportedAt).toLocaleDateString('ja-JP')}</div>
                                                                         {r.attachments?.map(a => (
                                                                             <a key={a.id} href={a.fileUrl} target="_blank" rel="noreferrer"
                                                                                 style={{ color: '#4a78c4', fontSize: '11px' }}>
@@ -419,40 +419,40 @@ export default function ImprovementPanel() {
                                                             </div>
                                                         )}
 
-                                                        {/* 新增頻測報告 */}
+                                                        {/* 進捗レポート追加 */}
                                                         {p.status === 'ACTIVE' && (
                                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                                                 <textarea
-                                                                    placeholder="填寫這次的測試結果..."
+                                                                    placeholder="今回の進捗を記入してください..."
                                                                     style={{ ...inputStyle, height: '56px', resize: 'vertical' }}
                                                                     value={reportForms[m.id]?.note ?? ''}
                                                                     onChange={e => setReportForms(prev => ({ ...prev, [m.id]: { ...prev[m.id], note: e.target.value } }))}
                                                                 />
                                                                 <div style={{ display: 'flex', gap: '6px' }}>
-                                                                    <input placeholder="附件連結 URL（選填）" style={inputStyle}
+                                                                    <input placeholder="添付リンク URL（任意）" style={inputStyle}
                                                                         value={reportForms[m.id]?.url ?? ''}
                                                                         onChange={e => setReportForms(prev => ({ ...prev, [m.id]: { ...prev[m.id], url: e.target.value } }))}
                                                                     />
-                                                                    <input placeholder="連結名稱（選填）" style={inputStyle}
+                                                                    <input placeholder="リンク名称（任意）" style={inputStyle}
                                                                         value={reportForms[m.id]?.urlName ?? ''}
                                                                         onChange={e => setReportForms(prev => ({ ...prev, [m.id]: { ...prev[m.id], urlName: e.target.value } }))}
                                                                     />
                                                                 </div>
                                                                 <button onClick={() => handleAddReport(m.id)} disabled={reportLoading}
                                                                     style={{ ...btnStyle('#4a78c4', '#fff'), alignSelf: 'flex-start' }}>
-                                                                    {reportLoading ? '儲存中...' : '新增頻測報告'}
+                                                                    {reportLoading ? '保存中...' : '進捗レポートを追加'}
                                                                 </button>
                                                             </div>
                                                         )}
                                                     </div>
                                                 ))}
 
-                                                {/* 新增 Milestone（ACTIVE 狀態才能加）*/}
+                                                {/* マイルストーン追加（ACTIVE 状態のみ）*/}
                                                 {p.status === 'ACTIVE' && (
                                                     <div style={{ backgroundColor: '#fff', borderRadius: '8px', padding: '14px 16px', border: '1px dashed #c5d0e8' }}>
-                                                        <div style={{ fontSize: '12px', color: '#5a6480', fontWeight: 600, marginBottom: '8px' }}>新增執行階段</div>
+                                                        <div style={{ fontSize: '12px', color: '#5a6480', fontWeight: 600, marginBottom: '8px' }}>実行フェーズを追加</div>
                                                         <div style={{ display: 'flex', gap: '8px' }}>
-                                                            <input placeholder="階段名稱" style={inputStyle}
+                                                            <input placeholder="フェーズ名" style={inputStyle}
                                                                 value={milestoneForm.title}
                                                                 onChange={e => setMilestoneForm(f => ({ ...f, title: e.target.value }))} />
                                                             <input type="date" style={inputStyle}
@@ -460,7 +460,7 @@ export default function ImprovementPanel() {
                                                                 onChange={e => setMilestoneForm(f => ({ ...f, targetDate: e.target.value }))} />
                                                             <button onClick={() => handleAddMilestone(p.id, p.milestones?.length ?? 0)}
                                                                 disabled={milestoneLoading} style={btnStyle('#4a78c4', '#fff')}>
-                                                                新增
+                                                                追加
                                                             </button>
                                                         </div>
                                                     </div>
@@ -475,52 +475,52 @@ export default function ImprovementPanel() {
                 </tbody>
             </table>
 
-            {/* 新增/編輯提案 Modal */}
+            {/* 新規作成／編集モーダル */}
             {showForm && (
                 <div style={overlayStyle}>
                     <div style={modalStyle}>
                         <h3 style={{ margin: '0 0 20px', fontSize: '16px', color: '#2c3554' }}>
-                            {editTarget ? '編輯提案' : '新增提案'}
+                            {editTarget ? '提案を編集' : '新規提案'}
                         </h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <Field label="提案標題 *">
+                            <Field label="提案タイトル *">
                                 <input style={inputStyle} value={form.title}
                                     onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
                             </Field>
-                            <Field label="現狀描述">
+                            <Field label="現状説明">
                                 <textarea style={{ ...inputStyle, height: '64px', resize: 'vertical' }}
                                     value={form.description}
                                     onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
                             </Field>
-                            <Field label="預期效果">
+                            <Field label="期待効果">
                                 <textarea style={{ ...inputStyle, height: '64px', resize: 'vertical' }}
                                     value={form.goal}
                                     onChange={e => setForm(f => ({ ...f, goal: e.target.value }))} />
                             </Field>
                             <div style={{ display: 'flex', gap: '10px' }}>
-                                <Field label="改善前數字">
+                                <Field label="改善前の数値">
                                     <input style={inputStyle} type="number" value={form.metricBefore}
                                         onChange={e => setForm(f => ({ ...f, metricBefore: e.target.value }))} />
                                 </Field>
-                                <Field label="目標數字">
+                                <Field label="目標値">
                                     <input style={inputStyle} type="number" value={form.metricAfterGoal}
                                         onChange={e => setForm(f => ({ ...f, metricAfterGoal: e.target.value }))} />
                                 </Field>
-                                <Field label="單位">
-                                    <input style={inputStyle} placeholder="分鐘 / 件 / 円" value={form.metricUnit}
+                                <Field label="単位">
+                                    <input style={inputStyle} placeholder="分 / 件 / 円" value={form.metricUnit}
                                         onChange={e => setForm(f => ({ ...f, metricUnit: e.target.value }))} />
                                 </Field>
                             </div>
-                            <Field label="截止日">
+                            <Field label="期限日">
                                 <input style={inputStyle} type="date" value={form.dueDate}
                                     onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} />
                             </Field>
-                            <Field label="協作成員">
+                            <Field label="協力メンバー">
                                 <div style={{ display: 'flex', gap: '6px' }}>
-                                    <input style={inputStyle} placeholder="輸入帳號名稱" value={memberInput}
+                                    <input style={inputStyle} placeholder="ユーザー名を入力" value={memberInput}
                                         onChange={e => setMemberInput(e.target.value)}
                                         onKeyDown={e => e.key === 'Enter' && addMember()} />
-                                    <button onClick={addMember} style={btnStyle('#f4f6fb', '#5a6480')}>加入</button>
+                                    <button onClick={addMember} style={btnStyle('#f4f6fb', '#5a6480')}>追加</button>
                                 </div>
                                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
                                     {form.members.map(m => (
@@ -534,35 +534,35 @@ export default function ImprovementPanel() {
                         </div>
                         {error && <div style={{ color: '#e05c5c', fontSize: '12px', marginTop: '8px' }}>{error}</div>}
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '20px' }}>
-                            <button onClick={() => setShowForm(false)} style={btnStyle('#f4f6fb', '#5a6480')}>取消</button>
+                            <button onClick={() => setShowForm(false)} style={btnStyle('#f4f6fb', '#5a6480')}>キャンセル</button>
                             <button onClick={handleSave} disabled={loading} style={btnStyle('#4a78c4', '#fff')}>
-                                {loading ? '儲存中...' : '儲存'}
+                                {loading ? '保存中...' : '保存'}
                             </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* 審核 Modal */}
+            {/* 承認審査モーダル */}
             {reviewTarget && (
                 <div style={overlayStyle}>
                     <div style={{ ...modalStyle, width: '420px' }}>
-                        <h3 style={{ margin: '0 0 16px', fontSize: '16px', color: '#2c3554' }}>審核提案</h3>
+                        <h3 style={{ margin: '0 0 16px', fontSize: '16px', color: '#2c3554' }}>提案を審査</h3>
                         <div style={{ fontSize: '13px', color: '#5a6480', marginBottom: '12px' }}>
                             《{reviewTarget.title}》— {reviewTarget.proposer}
                         </div>
-                        <Field label="審核意見（選填）">
+                        <Field label="審査コメント（任意）">
                             <textarea style={{ ...inputStyle, height: '80px', resize: 'vertical' }}
                                 value={reviewComment}
                                 onChange={e => setReviewComment(e.target.value)} />
                         </Field>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '20px' }}>
-                            <button onClick={() => setReviewTarget(null)} style={btnStyle('#f4f6fb', '#5a6480')}>取消</button>
+                            <button onClick={() => setReviewTarget(null)} style={btnStyle('#f4f6fb', '#5a6480')}>キャンセル</button>
                             <button onClick={() => handleReview(false)} disabled={reviewLoading} style={btnStyle('#fff0f0', '#e05c5c')}>
-                                拒絕
+                                却下
                             </button>
                             <button onClick={() => handleReview(true)} disabled={reviewLoading} style={btnStyle('#4a78c4', '#fff')}>
-                                核准
+                                承認
                             </button>
                         </div>
                     </div>
@@ -633,8 +633,8 @@ const tagStyle = (bg: string): React.CSSProperties => ({
 // ── Label / Color Maps ────────────────────────────────────
 
 const statusLabel = (s: string) => ({
-    ALL: '全部', DRAFT: '草稿', PENDING_REVIEW: '待審核',
-    ACTIVE: '執行中', COMPLETED: '已完成', REJECTED: '已拒絕', CANCELLED: '已撤銷',
+    ALL: 'すべて', DRAFT: '下書き', PENDING_REVIEW: '承認待ち',
+    ACTIVE: '実行中', COMPLETED: '完了', REJECTED: '却下', CANCELLED: '取り下げ',
 }[s] ?? s);
 
 const statusColor = (s: string) => ({
@@ -642,5 +642,5 @@ const statusColor = (s: string) => ({
     COMPLETED: '#e6f4ea', REJECTED: '#fce8e6', CANCELLED: '#f4f6fb',
 }[s] ?? '#f4f6fb');
 
-const milestoneStatusLabel = (s: string) => ({ PENDING: '未開始', IN_PROGRESS: '進行中', DONE: '已完成' }[s] ?? s);
+const milestoneStatusLabel = (s: string) => ({ PENDING: '未着手', IN_PROGRESS: '進行中', DONE: '完了' }[s] ?? s);
 const milestoneStatusColor = (s: string) => ({ PENDING: '#f4f6fb', IN_PROGRESS: '#e8f0fe', DONE: '#e6f4ea' }[s] ?? '#f4f6fb');

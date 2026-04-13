@@ -182,7 +182,8 @@ const QuotePanel: React.FC = () => {
                                             </td>
                                             <td className={shared.td}>
                                                 <span style={{
-                                                    padding: '2px 10px', borderRadius: '12px', fontSize: '12px',
+                                                    padding: '2px 10px', borderRadius: '12px', fontSize: '12px', 
+                                                    // display: 'Block',
                                                     fontWeight: 600, backgroundColor: `${statusColor[q.status]}20`,
                                                     color: statusColor[q.status]
                                                 }}>

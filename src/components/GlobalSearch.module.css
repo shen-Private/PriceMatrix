@@ -2,7 +2,12 @@
   position: relative;
   width: 300px;
 }
-
+/* ── 追加 ── */
+@media (max-width: 768px) {
+  .wrapper {
+    width: 120px; /* SP時は縮める */
+  }
+}
 .input {
   width: 100%;
   padding: 6px 12px;

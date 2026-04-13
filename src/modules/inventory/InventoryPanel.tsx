@@ -6,6 +6,7 @@ import React from 'react';
 import { useAuth } from '../../AuthContext';
 import { useSearchParams } from 'react-router-dom';
 const API_URL = import.meta.env.VITE_API_URL ?? '';
+
 axios.defaults.withCredentials = true;
 // ===== 型定義 =====
 interface Category {
@@ -143,14 +144,14 @@ function InventoryPanel() {
   };
 
 
-
+  // ===== 在庫一覧読み込み =====
   const showToast = (message: string, type: Toast['type'] = 'success') => {
     setToast({ message, type });
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 2500);
   };
 
-  // ===== 在庫一覧読み込み =====
+
   const loadItems = async () => {
     setIsLoading(true);
     try {

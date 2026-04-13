@@ -30,7 +30,7 @@
   height: 54px;
   background-color: #ffffff;
   border-bottom: 1px solid #d0d7e8;
-  box-shadow: 0 1px 3px rgba(30,39,64,0.08);
+  box-shadow: 0 1px 3px rgba(30, 39, 64, 0.08);
   flex-shrink: 0;
 }
 
@@ -79,7 +79,26 @@
   flex-direction: column;
   gap: 24px;
   overflow-y: auto;
-  box-shadow: 1px 0 3px rgba(30,39,64,0.06);
+  box-shadow: 1px 0 3px rgba(30, 39, 64, 0.06);
+}
+
+/* SP: sidebar を上部に折り畳む */
+@media (max-width: 768px) {
+  .layout {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    flex-shrink: 0;
+    border-right: none;
+    border-bottom: 1px solid #d0d7e8;
+    padding: 16px;
+    gap: 12px;
+    box-shadow: 0 1px 3px rgba(30, 39, 64, 0.06);
+    overflow-y: visible;
+    overflow-x: auto;
+  }
 }
 
 .sectionLabel {
@@ -97,6 +116,12 @@
   flex-direction: column;
   gap: 6px;
   margin-bottom: 12px;
+
+  @media (max-width: 768px) {
+
+    width: 80%;
+
+  }
 }
 
 .formLabel {
@@ -117,6 +142,12 @@
   font-family: inherit;
   box-sizing: border-box;
   transition: border-color 0.15s;
+
+  @media (max-width: 768px) {
+
+    width: 80%;
+
+  }
 }
 
 .formSelect {
@@ -149,8 +180,14 @@
   width: 100%;
   font-family: inherit;
   letter-spacing: 0.02em;
-  box-shadow: 0 2px 6px rgba(74,120,196,0.25);
+  box-shadow: 0 2px 6px rgba(74, 120, 196, 0.25);
   transition: background 0.15s;
+
+  @media (max-width: 768px) {
+
+    width: 80%;
+
+  }
 }
 
 .btnSearch:disabled {
@@ -179,7 +216,7 @@
   opacity: 0.7;
   font-family: monospace;
   font-size: 10px;
-  background-color: rgba(255,255,255,0.2);
+  background-color: rgba(255, 255, 255, 0.2);
   border-radius: 3px;
   padding: 1px 4px;
 }
@@ -229,8 +266,8 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  background-color: rgba(74,120,196,0.10);
-  border: 1px solid rgba(74,120,196,0.25);
+  background-color: rgba(74, 120, 196, 0.10);
+  border: 1px solid rgba(74, 120, 196, 0.25);
   border-radius: 8px;
   padding: 10px 14px;
 }
@@ -323,7 +360,7 @@
 .candidateMiniItem:hover {
   background-color: #eef2fb;
   border-color: #4a78c4;
-  box-shadow: 0 0 0 2px rgba(74,120,196,0.12);
+  box-shadow: 0 0 0 2px rgba(74, 120, 196, 0.12);
 }
 
 .candidateMiniAvatar {
@@ -380,6 +417,12 @@
   gap: 16px;
 }
 
+@media (max-width: 768px) {
+  .main {
+    padding: 16px;
+  }
+}
+
 .mainTitle {
   font-size: 16px;
   font-weight: 600;
@@ -398,12 +441,24 @@
   border: 1px solid #d0d7e8;
   border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(30,39,64,0.08);
+  box-shadow: 0 1px 3px rgba(30, 39, 64, 0.08);
+}
+
+@media (max-width: 768px) {
+  .tableWrap {
+    overflow-x: auto;
+  }
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
+}
+
+@media (max-width: 768px) {
+  .table {
+    min-width: 600px;
+  }
 }
 
 .th {
@@ -470,7 +525,7 @@
   background-color: #fff;
   color: #2d5399;
   outline: none;
-  box-shadow: 0 0 0 3px rgba(74,120,196,0.12);
+  box-shadow: 0 0 0 3px rgba(74, 120, 196, 0.12);
   text-align: center;
 }
 
@@ -530,7 +585,7 @@
   border-radius: 8px;
   font-size: 13px;
   font-weight: 500;
-  box-shadow: 0 4px 16px rgba(30,39,64,0.12);
+  box-shadow: 0 4px 16px rgba(30, 39, 64, 0.12);
   display: flex;
   align-items: center;
   gap: 8px;

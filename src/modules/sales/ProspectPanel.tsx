@@ -186,14 +186,23 @@ export default function ProspectPanel() {
                                 <td style={td()}><span style={tagStyle(sourceColor(p.source))}>{sourceLabel(p.source)}</span></td>
                                 <td style={td()}>{p.assignedTo ?? '—'}</td>
                                 <td style={td()}><span style={tagStyle(statusColor(p.status))}>{statusLabel(p.status)}</span></td>
-                                <td style={td()}>
-                                    {p.status !== 'CONVERTED' && (
+                                <td style={{ ...td(), display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end' }}>
+                                    {p.status === 'CONVERTED' ? (
+                                        <button disabled style={tabStyle(false, true)}>成約済</button>
+                                    ) : p.status === 'DROPPED' ? (
+                                        <button disabled style={tabStyle(false, true)}>編集不可</button>
+                                    ) : (
                                         <button
                                             onClick={e => { e.stopPropagation(); openEdit(p); }}
-                                            style={btnStyle('#f4f6fb', '#5a6480')}>
+                                            style={tabStyle(false)}>
                                             編集
                                         </button>
                                     )}
+                                    <button
+                                        onClick={e => { e.stopPropagation(); toggleExpand(p.id); }}
+                                        style={tabStyle(expandedId === p.id)}>
+                                        {expandedId === p.id ? '閉じる ▲' : '展開 ▼'}
+                                    </button>
                                 </td>
                             </tr>
 
@@ -375,10 +384,15 @@ const btnStyle = (bg: string, color: string): React.CSSProperties => ({
     backgroundColor: bg, color, fontSize: '13px', fontWeight: 600, cursor: 'pointer',
 });
 
-const tabStyle = (active: boolean): React.CSSProperties => ({
-    padding: '6px 14px', borderRadius: '6px', border: 'none', cursor: 'pointer',
-    backgroundColor: active ? '#4a78c4' : '#f4f6fb',
-    color: active ? '#fff' : '#5a6480', fontSize: '13px', fontWeight: 600,
+const tabStyle = (active: boolean, disabled = false): React.CSSProperties => ({
+    padding: '4px 12px',
+    borderRadius: '6px',
+    border: 'none',
+    cursor: disabled ? 'default' : 'pointer',
+    fontWeight: 600,
+    fontSize: '13px',
+    backgroundColor: disabled ? '#e0e0e0' : active ? '#4a78c4' : '#f4f6fb',
+    color: disabled ? '#aaa' : active ? '#fff' : '#5a6480',
 });
 
 const overlayStyle: React.CSSProperties = {
